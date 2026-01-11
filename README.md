@@ -147,7 +147,20 @@ Examples:
 
 ---
 
-## 🖼 Screenshots
+## � Important Commands
+
+### 🟢 Server Management
+- `nohup python3 secure_server.py &` **Start Server**: Runs your Python script in the background so it stays alive even if you close the window.
+- `pkill -f secure_server.py` **Stop Server**: Forcefully stops (kills) the Python server process instantly.
+
+### 🛠️ Debugging & Troubleshooting
+- `cat nohup.out` **Read Logs**: Prints the server's output log to the screen (useful for seeing errors).
+- `lsof -i :8080` **Check Port**: Shows exactly which program is holding onto Port 8080.
+- `ps aux | grep secure_server.py` **Find PID**: Lists running processes to see if your server is active and what its Process ID (PID) is.
+
+---
+
+## �🖼 Screenshots
 
 | Dashboard | Media download |
 |:---:|:---:|
