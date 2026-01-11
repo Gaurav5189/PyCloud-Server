@@ -82,6 +82,23 @@ sudo apt install python3 python3-ffmpeg
 
 FFmpeg is required for merging YouTube audio + video.
 
+---
+
+### 📥 Download `secure_server.py`
+
+```bash
+git clone https://github.com/<your-username>/PyCloud-Server.git
+cd PyCloud-Server
+```
+
+Or:
+
+```bash
+wget https://raw.githubusercontent.com/<your-username>/PyCloud-Server/main/secure_server.py
+```
+
+---
+
 ### Download yt-dlp
 
 ```bash
@@ -102,6 +119,8 @@ USERNAME = "admin"
 PASSWORD = "CHANGE_THIS_PASSWORD"
 ROOT_DIR = "/your/path/here"
 ```
+
+Recommended: use an **empty directory** for `ROOT_DIR` for a clean start. You can add files later.
 
 ---
 
@@ -130,8 +149,9 @@ Examples:
 
 ## 🖼 Screenshots
 
-|---------|------------------|
-| <img src="./assets/image01.png" width="400"> | <img src="./assets/image02.png" width="400"> |
+| Dashboard | Media download |
+|:---:|:---:|
+| <img src="assets/image01.png" width="45%"> | <img src="assets/image02.png" width="45%"> |
 
 ---
 
