@@ -87,14 +87,14 @@ FFmpeg is required for merging YouTube audio + video.
 ### 📥 Download `secure_server.py`
 
 ```bash
-git clone https://github.com/<your-username>/PyCloud-Server.git
+git clone https://github.com/Gaurav5189/PyCloud-Server.git
 cd PyCloud-Server
 ```
 
 Or:
 
 ```bash
-wget https://raw.githubusercontent.com/<your-username>/PyCloud-Server/main/secure_server.py
+wget https://raw.githubusercontent.com/Gaurav5189/PyCloud-Server/main/secure_server.py
 ```
 
 ---
