@@ -77,7 +77,7 @@ It runs as a **single Python process**, directly interacting with the system.
 
 ```bash
 sudo apt update
-sudo apt install python3 python3-ffmpeg
+sudo apt install python3 ffmpeg
 ```
 
 FFmpeg is required for merging YouTube audio + video.
