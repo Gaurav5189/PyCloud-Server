@@ -2400,6 +2400,7 @@
     /* ── yt-dlp fetch flow ─────────────────────────────────────────────── */
 
     let ytdlpInstalled = null;
+    let ffmpegInstalled = null;
 
     function openYtModal() {
         const feedback = $('#ytFeedback');
@@ -2412,14 +2413,21 @@
 
     async function refreshYtDlpStatus() {
         const prompt = $('#ytdlpPromptBox');
+        const ffmpegPrompt = $('#ffmpegPromptBox');
         const form = $('#ytdlpReadyForm');
         const footer = $('#ytdlpModalFooter');
         try {
             const res = await apiFetch('/api/tasks/ytdlp-status');
             const data = await res.json();
             ytdlpInstalled = Boolean(data && data.installed);
+            ffmpegInstalled = data && typeof data.ffmpeg_installed === 'boolean' ? data.ffmpeg_installed : null;
         } catch (err) {
             ytdlpInstalled = null;
+            ffmpegInstalled = null;
+        }
+
+        if (ffmpegPrompt) {
+            ffmpegPrompt.hidden = !(ytdlpInstalled === true && ffmpegInstalled === false);
         }
 
         if (ytdlpInstalled === true) {

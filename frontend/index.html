@@ -703,6 +703,15 @@
                     <div class="install-status mono" id="ytdlpInstallStatus"></div>
                 </div>
 
+                <div id="ffmpegPromptBox" class="notice notice-warn notice-stack" hidden>
+                    <div class="notice-head">
+                        <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+                        <strong>ffmpeg is not installed</strong>
+                    </div>
+                    <p>Most downloads arrive as separate video and audio streams. Merging them needs <code class="mono">ffmpeg</code>, so those downloads will be refused until it is installed.</p>
+                    <p class="mono">On the server: <code>sudo dnf install -y ffmpeg</code>, then restart PyCloud.</p>
+                </div>
+
                 <form id="ytdlpReadyForm" class="form-stack">
                     <p class="form-desc">Paste a link from YouTube, Vimeo, SoundCloud, Twitch, Reddit, TikTok or Twitter. The download runs in the background queue.</p>
                     <label class="field-label" for="ytUrlInput">Media URL</label>

@@ -74,10 +74,11 @@ type TaskManager struct {
 	outputDir   string
 	format      string
 	cookiesPath string
+	ffmpegPath  string
 	extraArgs   []string
 }
 
-func NewTaskManager(ytDlpPath, outputDir string, maxWorkers, queueSize int, format, cookiesPath string, extraArgs []string) *TaskManager {
+func NewTaskManager(ytDlpPath, outputDir string, maxWorkers, queueSize int, format, cookiesPath, ffmpegPath string, extraArgs []string) *TaskManager {
 	tm := &TaskManager{
 		tasks:       make([]*Task, 0),
 		queue:       make(chan *Task, queueSize),
@@ -86,6 +87,7 @@ func NewTaskManager(ytDlpPath, outputDir string, maxWorkers, queueSize int, form
 		outputDir:   outputDir,
 		format:      format,
 		cookiesPath: cookiesPath,
+		ffmpegPath:  ffmpegPath,
 		extraArgs:   extraArgs,
 	}
 
@@ -342,6 +344,12 @@ func (tm *TaskManager) ytDlpCommand(execPath, videoURL string) []string {
 		args = append(args, "--cookies", tm.cookiesPath)
 	}
 
+	// Point yt-dlp at the resolved ffmpeg so merging works even when the
+	// service's PATH does not include it.
+	if tm.ffmpegPath != "" {
+		args = append(args, "--ffmpeg-location", tm.ffmpegPath)
+	}
+
 	for _, extra := range tm.extraArgs {
 		// Skip blanks and a bare "--", which would end option parsing early and
 		// swallow the output template.
@@ -373,6 +381,26 @@ func hasFormatFlag(args []string) bool {
 	return false
 }
 
+// requiresMuxing reports whether the configured selector joins separate video
+// and audio streams, which yt-dlp can only do with ffmpeg.
+func (tm *TaskManager) requiresMuxing() bool {
+	if hasFormatFlag(tm.extraArgs) {
+		// The operator pinned their own selector; don't second-guess it.
+		return false
+	}
+	return strings.Contains(tm.format, "+")
+}
+
+// checkFFmpeg refuses a merge download when ffmpeg is unavailable. Without this
+// guard yt-dlp merely warns and writes two files: a silent video-only stream
+// plus a detached audio stream.
+func (tm *TaskManager) checkFFmpeg() error {
+	if tm.ffmpegPath != "" || !tm.requiresMuxing() {
+		return nil
+	}
+	return errors.New("ffmpeg is required to merge video and audio, but it was not found. Install ffmpeg (or set yt_dlp_ffmpeg_path) and retry. To download a single-file format instead, set yt_dlp_format to b[ext=mp4]/b")
+}
+
 // AddDownloadTask queues a safe yt-dlp download task
 func (tm *TaskManager) AddDownloadTask(jobType, videoURL string) (string, error) {
 	parsedURL, err := ValidateAndSanitizeVideoURL(videoURL)
@@ -384,6 +412,10 @@ func (tm *TaskManager) AddDownloadTask(jobType, videoURL string) (string, error)
 	installed, execPath := CheckYtDlpInstalled(tm.ytDlpPath)
 	if !installed {
 		return "", errors.New("ytdlp_missing: yt-dlp is not installed on this system")
+	}
+
+	if err := tm.checkFFmpeg(); err != nil {
+		return "", err
 	}
 
 	// Generate UUID v4
@@ -507,8 +539,10 @@ func HandleYtDlpStatus(tm *TaskManager) http.HandlerFunc {
 		installed, execPath := CheckYtDlpInstalled(tm.ytDlpPath)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"installed": installed,
-			"path":      execPath,
+			"installed":        installed,
+			"path":             execPath,
+			"ffmpeg_installed": tm.ffmpegPath != "",
+			"ffmpeg_path":      tm.ffmpegPath,
 		})
 	}
 }

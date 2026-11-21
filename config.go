@@ -33,6 +33,7 @@ type Config struct {
 	TrashRetentionDays int      `json:"trash_retention_days"`
 	YtDlpPath          string   `json:"yt_dlp_path"`
 	YtDlpFormat        string   `json:"yt_dlp_format"`
+	YtDlpFfmpegPath    string   `json:"yt_dlp_ffmpeg_path"`
 	YtDlpCookies       string   `json:"yt_dlp_cookies"`
 	YtDlpExtraArgs     []string `json:"yt_dlp_extra_args"`
 
@@ -64,6 +65,7 @@ func DefaultConfig() *Config {
 		TrashRetentionDays: 30,
 		YtDlpPath:          "yt-dlp",
 		YtDlpFormat:        DefaultYtDlpFormat,
+		YtDlpFfmpegPath:    "",
 		YtDlpCookies:       "",
 		YtDlpExtraArgs:     nil,
 	}

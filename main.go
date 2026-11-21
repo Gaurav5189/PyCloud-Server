@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"syscall"
 	"time"
@@ -30,6 +31,22 @@ func ServerUptimeSeconds() int64 {
 	return int64(time.Since(serverStartTime).Seconds())
 }
 
+// resolveFFmpegPath prefers an explicit config path, then falls back to PATH.
+// An empty result means yt-dlp cannot merge separate video and audio streams.
+func resolveFFmpegPath(configured string) string {
+	if configured != "" {
+		if info, err := os.Stat(configured); err == nil && !info.IsDir() {
+			return configured
+		}
+		log.Printf("⚠️  yt_dlp_ffmpeg_path is set to %q but is not a readable file", configured)
+		return ""
+	}
+	if p, err := exec.LookPath("ffmpeg"); err == nil {
+		return p
+	}
+	return ""
+}
+
 func main() {
 	configPath := "config.json"
 	if p := os.Getenv("PYCLOUD_CONFIG"); p != "" {
@@ -45,7 +62,12 @@ func main() {
 	// 2. Initialize Security & Core Components
 	sessionMgr := NewSessionManager(cfg.GetSessionSecretBytes())
 	loginRateLimiter := NewLoginRateLimiter(5, 5*time.Minute) // 5 attempts per 5 minutes
-	taskMgr := NewTaskManager(cfg.YtDlpPath, cfg.YtDir, 2, 50, cfg.YtDlpFormat, cfg.YtDlpCookies, cfg.YtDlpExtraArgs)
+
+	// Resolve the optional media toolchain once so the startup banner can report
+	// it and the task manager knows whether merging is possible.
+	ffmpegPath := resolveFFmpegPath(cfg.YtDlpFfmpegPath)
+	ytDlpInstalled, ytDlpPath := CheckYtDlpInstalled(cfg.YtDlpPath)
+	taskMgr := NewTaskManager(cfg.YtDlpPath, cfg.YtDir, 2, 50, cfg.YtDlpFormat, cfg.YtDlpCookies, ffmpegPath, cfg.YtDlpExtraArgs)
 	if cfg.YtDlpCookies != "" {
 		if _, err := os.Stat(cfg.YtDlpCookies); err != nil {
 			log.Printf("⚠️  yt_dlp_cookies is set to %q but the file is not readable: %v", cfg.YtDlpCookies, err)
@@ -178,6 +200,19 @@ func main() {
 		fmt.Println(" ⚠️  Status:       Setup Required (open browser to set admin password)")
 	} else {
 		fmt.Println(" 🛡️  Status:       Protected (password authenticated)")
+	}
+	if ytDlpInstalled {
+		fmt.Printf(" 🎬 yt-dlp:       %s\n", ytDlpPath)
+	} else {
+		fmt.Println(" ⚠️  yt-dlp:       not found — Fetch media is unavailable")
+	}
+	if ffmpegPath != "" {
+		fmt.Printf(" 🎞️  ffmpeg:       %s\n", ffmpegPath)
+	} else {
+		fmt.Println(" ⚠️  ffmpeg:       not found — video+audio merging is unavailable")
+	}
+	if !ytDlpInstalled || ffmpegPath == "" {
+		fmt.Println("    Install the missing tool(s) to enable downloads — see README → Troubleshooting.")
 	}
 	fmt.Println("==================================================================")
 	fmt.Println(" Server is ready. Press Ctrl+C to terminate.")

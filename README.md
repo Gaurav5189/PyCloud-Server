@@ -162,6 +162,7 @@ PyCloud reads `config.json` from its working directory and creates it on first r
   "trash_retention_days": 30,
   "yt_dlp_path": "yt-dlp",
   "yt_dlp_format": "bv*[vcodec^=avc1]+ba[acodec^=mp4a]/b[ext=mp4]/b",
+  "yt_dlp_ffmpeg_path": "",
   "yt_dlp_cookies": "",
   "yt_dlp_extra_args": []
 }
@@ -181,6 +182,7 @@ PyCloud reads `config.json` from its working directory and creates it on first r
 | `trash_retention_days` | int | `30` | Reserved; not enforced by the current release |
 | `yt_dlp_path` | string | `"yt-dlp"` | yt-dlp binary name or path |
 | `yt_dlp_format` | string | `"bv*[vcodec^=avc1]+ba[acodec^=mp4a]/b[ext=mp4]/b"` | yt-dlp `-f` selector. Default prefers H.264/AAC (plays in every browser). Set to `""` to use yt-dlp's own choice, or any other selector |
+| `yt_dlp_ffmpeg_path` | string | `""` | Path to `ffmpeg`. Empty = auto-detect on `PATH`. Needed to merge separate video/audio streams |
 | `yt_dlp_cookies` | string | `""` | Path to a Netscape-format `cookies.txt` passed to yt-dlp as `--cookies` |
 | `yt_dlp_extra_args` | string[] | `[]` | Extra yt-dlp flags, appended before the URL (e.g. `["--js-runtimes", "deno"]`) |
 
@@ -271,7 +273,7 @@ Requests pass through logging, security headers, CSRF, and session-auth middlewa
 - **Self-signed TLS by default.** For a public HTTPS certificate, terminate TLS at a reverse proxy (`-bind 127.0.0.1 -no-tls`) or supply `-cert`/`-key`.
 - **Trash is never purged automatically.** `trash_retention_days` is present in the config but not enforced yet; open Trash and use **Clear all** to empty it.
 - **In-browser playback depends on codec support.** MP4/WebM/MP3/FLAC/images play; MKV, AVI, and some MOV files usually cannot be decoded by browsers, so the player offers a download instead.
-- **Downloads are serialized.** Two workers, a 50-item queue, a 2-hour per-job timeout, and 100 tasks of history. `yt-dlp` (installable in-app) and `ffmpeg` (optional) are required for the fetch feature only.
+- **Downloads are serialized.** Two workers, a 50-item queue, a 2-hour per-job timeout, and 100 tasks of history. `yt-dlp` (installable in-app) and `ffmpeg` (required to merge separate video/audio streams) are used for the fetch feature only.
 - **Task history is in-memory.** Restarting PyCloud clears the task list; anything already downloaded stays on disk under `media/yt_library`.
 - **Uploads are not resumable** and directories cannot be uploaded, only individual files. Downloads *do* support HTTP Range.
 - **The Windows binary is unsigned**, so SmartScreen will warn on first launch.
@@ -310,6 +312,32 @@ Raise `max_upload_mb` in `config.json` and restart.
 <summary><strong>"yt-dlp is not installed" when fetching media</strong></summary>
 
 Open **Fetch media** and use **Download &amp; configure**, or install yt-dlp yourself and set `yt_dlp_path`.
+</details>
+
+<details>
+<summary><strong>A downloaded video has no audio</strong></summary>
+
+yt-dlp downloads the video and audio as **separate streams** for most formats, then merges them with `ffmpeg`. If `ffmpeg` is missing, yt-dlp only warns:
+
+```
+WARNING: You have requested merging of multiple formats but ffmpeg is not installed. The formats won't be merged
+```
+
+…and leaves two files — a silent `Name.f299.mp4` and a detached `Name.f140.m4a`. PyCloud then shows the video-only file. Install `ffmpeg` on the server and retry:
+
+```bash
+command -v ffmpeg            # check
+sudo dnf install -y ffmpeg   # Amazon Linux / Fedora, if the repo provides it
+
+# Otherwise use a static build:
+curl -fL -o /tmp/ffmpeg.tar.xz https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+tar -xf /tmp/ffmpeg.tar.xz -C /tmp
+sudo cp /tmp/ffmpeg-*-static/ffmpeg /usr/local/bin/
+sudo chmod +x /usr/local/bin/ffmpeg
+ffmpeg -version
+```
+
+PyCloud now refuses a merge download when `ffmpeg` is missing, with a clear error instead of silently writing a silent video. It prints the resolved `yt-dlp`/`ffmpeg` paths in the startup banner and warns when either is missing. If `ffmpeg` is not on the service's `PATH`, point `yt_dlp_ffmpeg_path` at the binary and restart. Delete the stale `.f140.m4a`/`.f299.mp4` pair and re-download.
 </details>
 
 <details>

@@ -55,7 +55,7 @@ Frontend files are loaded into the binary with `//go:embed frontend/*` (see `mai
 
 - **Go 1.27+** (`go.mod` pins `go 1.27.4`). Confirm with `go version`.
 - **GNU make** (optional — every target is a thin `go build`/`go test` wrapper).
-- **yt-dlp** and **ffmpeg** on `PATH` *only* if you want to exercise the "Fetch media" flow locally. Not needed for the rest of the app.
+- **yt-dlp** and **ffmpeg** on `PATH` for the "Fetch media" flow (`ffmpeg` is required to merge the separate video/audio streams that the default format selects). Not needed for the rest of the app. The startup banner prints both paths, or warns when either is missing.
 - A modern browser for UI verification.
 
 PyCloud has **zero third-party Go dependencies** — no `go.sum`, no vendoring. Keep it that way unless there is a strong reason.
@@ -165,6 +165,8 @@ Then set `"yt_dlp_path": "/tmp/yt-dlp-stub"` in `config.json` and restart. `/api
 **yt-dlp on a cloud host.** YouTube blocks datacenter IPs and now needs a JavaScript runtime, which is why downloads that work on a laptop fail on a VPS with `Sign in to confirm you're not a bot` or `No supported JavaScript runtime could be found`. Both are handled through config: `yt_dlp_cookies` (path to a Netscape `cookies.txt`) becomes `--cookies`, and `yt_dlp_extra_args` (e.g. `["--js-runtimes", "deno"]`) is appended as-is. `TaskManager.ytDlpCommand` in `tasks.go` is the single place that assembles the argv; `tasks_test.go` pins the ordering (shared flags → `-f` → `--cookies` → extra args → `-o` → `--` → URL) so the URL can never be displaced.
 
 **Why downloads default to H.264.** `yt_dlp_format` defaults to `bv*[vcodec^=avc1]+ba[acodec^=mp4a]/b[ext=mp4]/b`. yt-dlp's own default now prefers AV1, and YouTube serves AV1 inside `.mp4`; the file downloads fine but browsers that lack an AV1 decoder (notably mobile Safari) show "cannot be played in the browser". The player does not transcode, so the downloader has to produce a codec the browser can decode. Set `yt_dlp_format` to `""` for yt-dlp's own choice, or to any other `-f` expression; if `yt_dlp_extra_args` already contains `-f`/`--format`, the built-in selector is skipped (`hasFormatFlag`) because duplicate `-f` makes yt-dlp fail.
+
+**ffmpeg is required for the default format.** The `+` in `yt_dlp_format` joins separate video and audio streams, which only ffmpeg can mux. `AddDownloadTask` refuses to queue a merge download when no ffmpeg was resolved, instead of letting yt-dlp write a silent video-only `.fNNN.mp4` plus a detached `.fNNN.m4a`. ffmpeg is resolved once at startup from `yt_dlp_ffmpeg_path` or `PATH`; the banner prints it, and the resolved path is passed to yt-dlp as `--ffmpeg-location` so a restricted service `PATH` cannot hide it.
 
 **Frontend errors.** Open the browser console. The strict CSP (`script-src 'self'`) means inline scripts and CDNs are blocked by design — all JavaScript must live in `frontend/js/*.js`. If a request 401s, the client shows the login dialog; a 428 shows the setup dialog.
 

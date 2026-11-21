@@ -44,7 +44,7 @@ func TestTaskCompletionDoesNotDeadlock(t *testing.T) {
 	stub := writeStubYtDlp(t, dir,
 		"#!/bin/sh\necho '[download] Destination: stub.mp4'\necho '[download] 100% of 1.00MiB'\nexit 0\n")
 
-	tm := NewTaskManager(stub, dir, 1, 4, "", "", nil)
+	tm := NewTaskManager(stub, dir, 1, 4, "", "", "", nil)
 	id, err := tm.AddDownloadTask("Media Download", "https://www.youtube.com/watch?v=abc123")
 	if err != nil {
 		t.Fatalf("AddDownloadTask: %v", err)
@@ -73,7 +73,7 @@ func TestCancelTaskDoesNotDeadlock(t *testing.T) {
 	dir := t.TempDir()
 	stub := writeStubYtDlp(t, dir, "#!/bin/sh\necho started\nsleep 5\n")
 
-	tm := NewTaskManager(stub, dir, 1, 4, "", "", nil)
+	tm := NewTaskManager(stub, dir, 1, 4, "", "", "", nil)
 	id, err := tm.AddDownloadTask("Media Download", "https://youtu.be/abc")
 	if err != nil {
 		t.Fatalf("AddDownloadTask: %v", err)
@@ -111,7 +111,7 @@ func TestCancelTaskDoesNotDeadlock(t *testing.T) {
 // final argument after "--" so nothing operator-supplied can be read as a URL.
 func TestYtDlpCommandBuildsArgs(t *testing.T) {
 	dir := t.TempDir()
-	tm := NewTaskManager("yt-dlp", dir, 1, 1, DefaultYtDlpFormat, "/etc/pycloud/cookies.txt",
+	tm := NewTaskManager("yt-dlp", dir, 1, 1, DefaultYtDlpFormat, "/etc/pycloud/cookies.txt", "/usr/bin/ffmpeg",
 		[]string{"--js-runtimes", "deno", "  ", "--", "--proxy", "http://127.0.0.1:8080"})
 
 	args := tm.ytDlpCommand("/usr/bin/yt-dlp", "https://youtu.be/abc")
@@ -121,6 +121,7 @@ func TestYtDlpCommandBuildsArgs(t *testing.T) {
 		"--no-exec", "--no-config", "--restrict-filenames", "--no-playlist",
 		"-f", DefaultYtDlpFormat,
 		"--cookies", "/etc/pycloud/cookies.txt",
+		"--ffmpeg-location", "/usr/bin/ffmpeg",
 		"--js-runtimes", "deno",
 		"--proxy", "http://127.0.0.1:8080",
 		"-o", filepath.Join(dir, "%(title)s.%(ext)s"),
@@ -143,7 +144,7 @@ func TestYtDlpCommandBuildsArgs(t *testing.T) {
 }
 
 func TestYtDlpCommandOmitsCookiesWhenUnset(t *testing.T) {
-	tm := NewTaskManager("yt-dlp", t.TempDir(), 1, 1, "", "", nil)
+	tm := NewTaskManager("yt-dlp", t.TempDir(), 1, 1, "", "", "", nil)
 	for _, arg := range tm.ytDlpCommand("yt-dlp", "https://youtu.be/abc") {
 		if arg == "--cookies" {
 			t.Fatal("--cookies must not be added when no cookies file is configured")
@@ -153,7 +154,7 @@ func TestYtDlpCommandOmitsCookiesWhenUnset(t *testing.T) {
 
 // An empty yt_dlp_format must mean "use yt-dlp's own choice", not an empty -f.
 func TestYtDlpCommandOmitsFormatWhenEmpty(t *testing.T) {
-	tm := NewTaskManager("yt-dlp", t.TempDir(), 1, 1, "", "", nil)
+	tm := NewTaskManager("yt-dlp", t.TempDir(), 1, 1, "", "", "", nil)
 	for _, arg := range tm.ytDlpCommand("yt-dlp", "https://youtu.be/abc") {
 		if arg == "-f" || strings.HasPrefix(arg, "--format") {
 			t.Fatalf("no format flag expected when yt_dlp_format is empty: %q", arg)
@@ -171,7 +172,7 @@ func TestYtDlpCommandDefersToOperatorFormat(t *testing.T) {
 		{"--format=worst"},
 	}
 	for _, extra := range cases {
-		tm := NewTaskManager("yt-dlp", t.TempDir(), 1, 1, DefaultYtDlpFormat, "", extra)
+		tm := NewTaskManager("yt-dlp", t.TempDir(), 1, 1, DefaultYtDlpFormat, "", "", extra)
 		args := tm.ytDlpCommand("yt-dlp", "https://youtu.be/abc")
 
 		count := 0
@@ -186,5 +187,57 @@ func TestYtDlpCommandDefersToOperatorFormat(t *testing.T) {
 		if count != 1 {
 			t.Fatalf("expected exactly one format flag for extra %q, got %d: %q", extra, count, args)
 		}
+	}
+}
+
+// A merge selector needs ffmpeg. Without it yt-dlp only warns and leaves two
+// files: a silent video-only stream plus a detached audio stream.
+func TestAddDownloadTaskRequiresFFmpegForMergedFormats(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a POSIX shell stub")
+	}
+	dir := t.TempDir()
+	stub := writeStubYtDlp(t, dir, "#!/bin/sh\nexit 0\n")
+	tm := NewTaskManager(stub, dir, 1, 1, DefaultYtDlpFormat, "", "", nil)
+
+	_, err := tm.AddDownloadTask("Media Download", "https://youtu.be/abc")
+	if err == nil || !strings.Contains(err.Error(), "ffmpeg") {
+		t.Fatalf("expected an ffmpeg error, got %v", err)
+	}
+}
+
+func TestAddDownloadTaskAllowsSingleFileWithoutFFmpeg(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a POSIX shell stub")
+	}
+	dir := t.TempDir()
+	stub := writeStubYtDlp(t, dir, "#!/bin/sh\nexit 0\n")
+	tm := NewTaskManager(stub, dir, 1, 1, "b[ext=mp4]/b", "", "", nil)
+
+	if _, err := tm.AddDownloadTask("Media Download", "https://youtu.be/abc"); err != nil {
+		t.Fatalf("a single-file format must not require ffmpeg: %v", err)
+	}
+}
+
+func TestYtDlpCommandOmitsFFmpegLocationWhenUnset(t *testing.T) {
+	tm := NewTaskManager("yt-dlp", t.TempDir(), 1, 1, "b", "", "", nil)
+	for _, arg := range tm.ytDlpCommand("yt-dlp", "https://youtu.be/abc") {
+		if arg == "--ffmpeg-location" {
+			t.Fatal("--ffmpeg-location must be omitted when no ffmpeg is configured")
+		}
+	}
+}
+
+func TestResolveFFmpegPath(t *testing.T) {
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "ffmpeg")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatalf("write fake ffmpeg: %v", err)
+	}
+	if got := resolveFFmpegPath(bin); got != bin {
+		t.Fatalf("configured ffmpeg: got %q, want %q", got, bin)
+	}
+	if got := resolveFFmpegPath(filepath.Join(dir, "missing")); got != "" {
+		t.Fatalf("missing configured ffmpeg: got %q, want empty", got)
 	}
 }
