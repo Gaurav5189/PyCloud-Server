@@ -36,7 +36,6 @@ ffprobe
 # 5. Compiled Application Binaries & Releases
 pycloud
 pycloud.exe
-dist/
 bin/
 *.exe
 *.dll
