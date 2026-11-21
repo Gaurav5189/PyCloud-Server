@@ -121,6 +121,20 @@ make release     # cross-compile all five platform binaries into dist/
 make clean       # remove ./pycloud and dist/
 ```
 
+### Exposing it on the internet (VPS, EC2, home server)
+
+PyCloud's built-in certificate is self-signed, so browsers warn. To serve it on standard HTTPS with a **trusted certificate**, put [Caddy](https://caddyserver.com) in front: Caddy gets a real certificate automatically and proxies to PyCloud on localhost.
+
+```bash
+# 1. Run PyCloud on localhost only (keep TLS on)
+./pycloud -bind 127.0.0.1 -port 8443 -root /srv/pycloud/storage
+
+# 2. Install Caddy and a hostname (no signup needed — <ip>.nip.io resolves to that IP)
+sudo ./deploy/install-caddy.sh 203.0.113.10.nip.io
+```
+
+Then browse to `https://203.0.113.10.nip.io`. Allow inbound **TCP 80 and 443** in the cloud firewall; 8443 no longer needs to be public. Full instructions and troubleshooting: [`deploy/README.md`](deploy/README.md).
+
 ## Usage
 
 - **First run** — the browser shows a setup screen. Set an admin password (minimum 8 characters), or preset one with `./pycloud -set-password 'your-long-password'`.
@@ -298,6 +312,28 @@ Stop the server, remove `config.json` (or clear `password_hash`), restart, and c
 <summary><strong>Login says too many attempts</strong></summary>
 
 Failed logins are limited to 5 per 5 minutes per IP. Wait five minutes and try again.
+</details>
+
+<details>
+<summary><strong>I can't reach the server from another machine (cloud VM or remote host)</strong></summary>
+
+PyCloud listens on **8443**, not 80 or 443. A browser **timeout** (`ERR_CONNECTION_TIMED_OUT`) means a firewall dropped the packet; a *refused* connection means nothing is listening. First confirm the server itself is healthy, then open the right port.
+
+```bash
+# Is the app serving? (bypasses the cloud firewall entirely)
+curl -k https://127.0.0.1:8443/api/status      # expect {"version":"2.0.0",...}
+
+# What address is it bound to?
+ss -ltnp | grep 8443                            # macOS: lsof -i :8443
+```
+
+If `curl` works locally but not from your laptop, the network is the problem:
+
+- **AWS EC2** — add an inbound rule for **Custom TCP 8443** in the instance's security group (Source: *My IP*). Opening 80/443 does **not** open 8443.
+- **Other cloud VMs** — open 8443 in the provider firewall *and* the host firewall (`sudo ufw allow 8443/tcp`).
+- **The `Network:` line in the banner is the private IP.** Browse to the instance's **public** IP or DNS name instead.
+- **Prefer the standard HTTPS port?** Run `sudo ./pycloud -port 443` (ports below 1024 require root), then use `https://<public-ip>` with no port suffix.
+- The self-signed certificate warning still applies — accept it and continue.
 </details>
 
 ## Contributing

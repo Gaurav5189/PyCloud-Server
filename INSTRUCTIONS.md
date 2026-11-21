@@ -12,6 +12,7 @@ Internal notes for developing, debugging, and releasing PyCloud. For the user-fa
 - [Debugging](#debugging)
 - [Frontend notes](#frontend-notes)
 - [Where things live at runtime](#where-things-live-at-runtime)
+- [Deploying behind a reverse proxy](#deploying-behind-a-reverse-proxy)
 - [Releasing](#releasing)
 - [Publishing release binaries](#publishing-release-binaries)
 - [Regenerating screenshots](#regenerating-screenshots)
@@ -42,6 +43,7 @@ Internal notes for developing, debugging, and releasing PyCloud. For the user-fa
 | `frontend/css/style.css` | Single stylesheet with theme tokens |
 | `frontend/fonts/`, `frontend/favicon.svg` | Self-hosted assets |
 | `assets/` | README screenshots |
+| `deploy/` | Caddy reverse-proxy helper (`install-caddy.sh`) + docs. Not part of the binary. |
 | `Makefile` | `build`, `test`, `run`, `release`, `clean` |
 | `config.example.json` | Starting point for `config.json` |
 | `secure_server.py` | **Legacy** Python server (pre-v2.0). Not part of the Go build. |
@@ -182,6 +184,20 @@ Then set `"yt_dlp_path": "/tmp/yt-dlp-stub"` in `config.json` and restart. `/api
 | `<root_dir>/.pycloud_trash` | Deleted items land here as `<unix>_<name>` |
 
 Deleting from inside `.pycloud_trash` erases the item permanently — there is no restore endpoint.
+
+## Deploying behind a reverse proxy
+
+For a public server, put Caddy in front so clients get a trusted certificate while PyCloud keeps its own TLS on the loopback interface. `deploy/install-caddy.sh` automates this (install Caddy, write `/etc/caddy/Caddyfile`, install a `caddy.service`); `deploy/README.md` has the details.
+
+```bash
+./pycloud -bind 127.0.0.1 -port 8443 -root /srv/pycloud/storage
+sudo ./deploy/install-caddy.sh 203.0.113.10.nip.io
+```
+
+Two things to keep in mind when touching proxy-adjacent code:
+
+- **Client IP.** `ClientIP()` in `security.go` reads `X-Forwarded-For` then `X-Real-IP` before falling back to `RemoteAddr`. Caddy sets `X-Forwarded-For`, so login rate-limiting sees the real client. Anything that trusts these headers must only be reachable from the proxy — hence binding PyCloud to `127.0.0.1`.
+- **`Secure` cookies and HSTS** are only emitted when `cfg.TLSEnabled` is true (`middleware.go`, `auth_handlers.go`). Run PyCloud with TLS enabled even behind a TLS-terminating proxy; if you must use `-no-tls`, know that those two protections are dropped.
 
 ## Releasing
 
