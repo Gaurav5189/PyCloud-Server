@@ -1,0 +1,13 @@
+{
+  "port": 8443,
+  "bind_addr": "0.0.0.0",
+  "root_dir": "./storage",
+  "password_hash": "",
+  "session_secret": "",
+  "tls_enabled": true,
+  "tls_cert_file": "certs/server.crt",
+  "tls_key_file": "certs/server.key",
+  "max_upload_mb": 4096,
+  "trash_retention_days": 30,
+  "yt_dlp_path": "yt-dlp"
+}

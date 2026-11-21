@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyCloud v2.0 - Private Cloud</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Top Bar -->
+    <header class="top-bar">
+        <div class="brand">
+            <span class="logo">☁️</span>
+            <h1>PyCloud <span class="version-tag">v2.0</span></h1>
+        </div>
+
+        <!-- System Stats Bar -->
+        <div class="stats-row" id="statsRow">
+            <div class="stat-pill" title="CPU Load">
+                <span class="stat-icon">⚡</span>
+                <span class="stat-label">CPU</span>
+                <span id="statCpu" class="stat-value">...</span>
+            </div>
+            <div class="stat-pill" title="RAM Usage">
+                <span class="stat-icon">🧠</span>
+                <span class="stat-label">RAM</span>
+                <span id="statRam" class="stat-value">...</span>
+            </div>
+            <div class="stat-pill" title="Free Disk Space">
+                <span class="stat-icon">💾</span>
+                <span class="stat-label">Free</span>
+                <span id="statDisk" class="stat-value">...</span>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <button id="btnFetchVideo" class="btn btn-primary" title="Fetch video from YouTube or other streaming sites">
+                <span>▶</span> Fetch Media
+            </button>
+            <button id="btnNewFolder" class="btn btn-secondary" title="Create new subfolder">
+                <span>📁</span> New Folder
+            </button>
+            <button id="btnLogout" class="btn btn-outline" title="Log out">
+                <span>🔒</span> Logout
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-container">
+        <!-- Task Manager Widget -->
+        <section class="task-widget" id="taskWidget">
+            <div class="task-widget-header" id="taskHeaderToggle">
+                <div class="task-header-title">
+                    <span class="pulse-dot"></span>
+                    <strong>Background Task Engine</strong>
+                    <span id="activeTasksCount" class="badge">0</span>
+                </div>
+                <button class="btn-icon" id="btnToggleTasks" title="Expand/Collapse Tasks">▼</button>
+            </div>
+            <div class="task-list" id="taskList" style="display: none;">
+                <div class="empty-state">No background tasks</div>
+            </div>
+        </section>
+
+        <!-- Navigation Breadcrumbs & Category Bar -->
+        <div class="nav-bar">
+            <div class="breadcrumbs" id="breadcrumbs">
+                <span class="crumb active" data-path="">🏠 Root</span>
+            </div>
+            <div class="category-tabs">
+                <button class="tab-btn active" data-cat="all">All Files</button>
+                <button class="tab-btn" data-cat="uploads">📂 Uploads</button>
+                <button class="tab-btn" data-cat="youtube">📺 YouTube</button>
+                <button class="tab-btn" data-cat="trash">🗑️ Trash</button>
+            </div>
+        </div>
+
+        <!-- Filter Search Bar -->
+        <div class="search-bar">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" placeholder="Search and filter files..." autocomplete="off">
+            <span id="fileCountBadge" class="file-count">0 items</span>
+        </div>
+
+        <!-- Drag & Drop Upload Zone -->
+        <section class="drop-zone" id="dropZone">
+            <input type="file" id="fileInput" multiple style="display: none;">
+            <div class="drop-content">
+                <span class="drop-icon">📤</span>
+                <p>Drag & drop files here or <button type="button" class="link-btn" id="browseBtn">browse your computer</button></p>
+                <span class="drop-hint">Max upload size: 4 GB per file • Resumable transfers</span>
+            </div>
+            <!-- Upload Progress Container -->
+            <div id="uploadProgressContainer" class="upload-progress-container" style="display: none;">
+                <div class="upload-info">
+                    <span id="uploadFilename">Uploading...</span>
+                    <span id="uploadPercentage">0%</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div id="uploadProgressBar" class="progress-bar-fill"></div>
+                </div>
+                <button id="btnCancelUpload" class="btn btn-sm btn-danger">Cancel</button>
+            </div>
+        </section>
+
+        <!-- File List View -->
+        <section class="files-view">
+            <div class="files-header">
+                <div class="col-name">Name</div>
+                <div class="col-size">Size</div>
+                <div class="col-date">Modified</div>
+                <div class="col-actions">Actions</div>
+            </div>
+            <div class="files-list" id="filesList">
+                <div class="loading-state">Loading files...</div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal: Fetch Video (yt-dlp) -->
+    <div class="modal-overlay" id="ytModal" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>Fetch Video / Audio</h3>
+                <button class="btn-close" data-close-modal="ytModal">×</button>
+            </div>
+            <div class="modal-body">
+                <!-- Missing yt-dlp Prompt Box -->
+                <div id="ytdlpPromptBox" class="alert-box" style="display: none;">
+                    <div class="alert-header">
+                        <span class="alert-icon">⚠️</span>
+                        <strong>yt-dlp is not installed</strong>
+                    </div>
+                    <p class="alert-desc">
+                        Downloading and processing videos from YouTube, Vimeo, and other platforms requires the <code>yt-dlp</code> binary.
+                    </p>
+                    <p class="alert-question">
+                        Would you like PyCloud to download and configure the official standalone <code>yt-dlp</code> executable for your system automatically?
+                    </p>
+                    <div class="alert-actions">
+                        <button id="btnConfirmInstallYtDlp" class="btn btn-primary btn-sm">
+                            <span>⬇️</span> Yes, Download & Configure
+                        </button>
+                        <button class="btn btn-secondary btn-sm" data-close-modal="ytModal">
+                            No, Cancel
+                        </button>
+                    </div>
+                    <div id="ytdlpInstallStatus" class="install-status"></div>
+                </div>
+
+                <!-- Ready Download Form -->
+                <div id="ytdlpReadyForm">
+                    <p class="modal-desc">Paste a video link from YouTube, Vimeo, Soundcloud, Twitch, Reddit, TikTok, or Twitter.</p>
+                    <label for="ytUrlInput" class="input-label">Media URL:</label>
+                    <input type="url" id="ytUrlInput" placeholder="https://www.youtube.com/watch?v=..." class="form-input">
+                    <div id="ytFeedback" class="feedback-msg"></div>
+                </div>
+            </div>
+            <div class="modal-footer" id="ytdlpModalFooter">
+                <button class="btn btn-secondary" data-close-modal="ytModal">Cancel</button>
+                <button id="btnSubmitYt" class="btn btn-primary">Download to Server</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Cinema Mode Media Player -->
+    <div class="modal-overlay cinema-modal" id="cinemaModal" style="display: none;">
+        <div class="cinema-dialog">
+            <div class="cinema-header">
+                <h3 id="cinemaTitle">Media Player</h3>
+                <div class="cinema-actions">
+                    <a id="cinemaDlBtn" href="#" class="btn btn-sm btn-secondary" download>⬇ Download</a>
+                    <button class="btn-close" data-close-modal="cinemaModal">×</button>
+                </div>
+            </div>
+            <div class="cinema-content" id="cinemaContent">
+                <!-- Dynamically loaded video, audio, or image -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Rename Item -->
+    <div class="modal-overlay" id="renameModal" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>Rename Item</h3>
+                <button class="btn-close" data-close-modal="renameModal">×</button>
+            </div>
+            <div class="modal-body">
+                <label for="renameInput" class="input-label">New Name:</label>
+                <input type="text" id="renameInput" class="form-input">
+                <input type="hidden" id="renameTargetOldPath">
+                <div id="renameFeedback" class="feedback-msg"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-close-modal="renameModal">Cancel</button>
+                <button id="btnSubmitRename" class="btn btn-primary">Rename</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: New Folder -->
+    <div class="modal-overlay" id="mkdirModal" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>Create New Folder</h3>
+                <button class="btn-close" data-close-modal="mkdirModal">×</button>
+            </div>
+            <div class="modal-body">
+                <label for="mkdirInput" class="input-label">Folder Name:</label>
+                <input type="text" id="mkdirInput" placeholder="Folder name..." class="form-input">
+                <div id="mkdirFeedback" class="feedback-msg"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-close-modal="mkdirModal">Cancel</button>
+                <button id="btnSubmitMkdir" class="btn btn-primary">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Login Required -->
+    <div class="modal-overlay auth-modal" id="loginModal" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>🔒 PyCloud Authentication</h3>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">Enter your admin password to access your private cloud.</p>
+                <label for="loginPassword" class="input-label">Password:</label>
+                <input type="password" id="loginPassword" placeholder="••••••••" class="form-input" autofocus>
+                <div id="loginFeedback" class="feedback-msg"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="btnSubmitLogin" class="btn btn-primary" style="width: 100%;">Sign In</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Initial First-Run Setup -->
+    <div class="modal-overlay auth-modal" id="setupModal" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>🚀 Initial Setup Wizard</h3>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">Welcome to PyCloud v2.0! Establish an admin password (minimum 8 characters) to secure your server.</p>
+                <label for="setupPassword" class="input-label">Admin Password:</label>
+                <input type="password" id="setupPassword" placeholder="••••••••" class="form-input">
+                <label for="setupConfirmPassword" class="input-label" style="margin-top: 10px;">Confirm Password:</label>
+                <input type="password" id="setupConfirmPassword" placeholder="••••••••" class="form-input">
+                <div id="setupFeedback" class="feedback-msg"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="btnSubmitSetup" class="btn btn-primary" style="width: 100%;">Complete Setup & Open Cloud</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

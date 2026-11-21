@@ -1,0 +1,72 @@
+# ==========================================
+# PyCloud .gitignore
+# ==========================================
+
+# 1. TLS Certificates, Keys & Secrets (CRITICAL)
+certs/
+*.crt
+*.key
+*.pem
+*.cer
+*.p12
+*.pfx
+
+# 2. Local Configuration & Secrets
+config.json
+config.yaml
+config.yml
+*.env
+*.env.*
+
+# 3. User Storage, Media & Trash
+storage/
+media/
+.pycloud_trash/
+uploads/
+yt_library/
+
+# 4. External Binaries & Auto-Downloaded Tools
+yt-dlp
+yt-dlp.exe
+yt-dlp_linux*
+yt-dlp_macos*
+ffmpeg
+ffprobe
+
+# 5. Compiled Application Binaries & Releases
+pycloud
+pycloud.exe
+dist/
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# 6. Temporary Files & Runtime Logs
+*.tmp
+*.tmp.*
+.tmp_*
+nohup.out
+*.log
+
+# 7. Operating System & Editor Artifacts
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+memory.md
+
+# 8. Legacy Python Artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/

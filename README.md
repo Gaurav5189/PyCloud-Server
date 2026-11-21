@@ -1,168 +1,170 @@
 <div align="center">
 
-# ☁️ PyCloud v8.6  
-### System-Powered Personal Cloud & Media Center
+# ☁️ PyCloud v2.0  
+### Next-Gen Self-Hosted Personal Cloud & Media Engine
 
-A lightweight, self-hosted **private cloud and media server** built entirely in **Python**.
+A secure, high-performance, self-hosted **private cloud, file manager, cinema media server, and background task engine** delivered as a **single, zero-dependency static executable** for **Linux, macOS, and Windows**.
 
-**No frameworks. No database. One Python script.**
+**Zero external runtimes needed. Download one file and run.**
 
-<img src="https://img.shields.io/badge/Python-3.x-blue?style=for-the-badge&logo=python&logoColor=white">
-<img src="https://img.shields.io/badge/Self--Hosted-Yes-success?style=for-the-badge">
-<img src="https://img.shields.io/badge/Platform-Linux-orange?style=for-the-badge&logo=linux">
-<img src="https://img.shields.io/badge/Status-Active-brightgreen?style=for-the-badge">
+<img src="https://img.shields.io/badge/Language-Go%201.24+-00ADD8?style=for-the-badge&logo=go&logoColor=white">
+<img src="https://img.shields.io/badge/Architecture-Single%20Static%20Binary-success?style=for-the-badge">
+<img src="https://img.shields.io/badge/Platforms-Linux%20%7C%20macOS%20%7C%20Windows-blue?style=for-the-badge">
+<img src="https://img.shields.io/badge/Security-Hardened%20(OWASP)-red?style=for-the-badge">
 <img src="https://img.shields.io/badge/License-Open_Source-lightgrey?style=for-the-badge">
 
 <br>
 
-<img src="https://readme-typing-svg.herokuapp.com?font=JetBrains+Mono&size=16&pause=1000&color=36BCF7&center=true&vCenter=true&width=600&lines=Minimal.+Fast.+System-Level.;Runs+Directly+On+Your+Server.;Your+Files.+Your+Control.">
+<img src="https://readme-typing-svg.herokuapp.com?font=JetBrains+Mono&size=16&pause=1000&color=36BCF7&center=true&vCenter=true&width=600&lines=Single+Static+Binary.+Zero+Dependencies.;Runs+Everywhere%3A+Linux%2C+Mac%2C+Windows%2C+RPi.;Hardened+Security.+Full+Control.">
 
 </div>
 
 ---
 
-## 🚀 Overview
+## 🚀 What's New in v2.0?
 
-**PyCloud** is a minimal yet powerful **personal cloud, file manager, media center, and background task engine** designed for:
+PyCloud v2.0 is a complete ground-up rewrite engineered to resolve all 28 vulnerabilities found in previous versions while fulfilling the goal of a **single runnable file for all machines** without requiring Python, pip, or virtual environments:
 
-- VPS servers  
-- Raspberry Pi  
-- Home labs  
-- Local Linux machines  
-
-It runs as a **single Python process**, directly interacting with the system.
+| Feature / Metric | Legacy v8.6 (Python) | PyCloud v2.0 (New Binary) |
+|---|---|---|
+| **Runtime Dependencies** | Python 3.x, pip, system libs | **Zero (100% self-contained static executable)** |
+| **Cross-Platform Support** | Linux-centric (`/proc/`, `setsid`) | **Linux (x86_64, ARM64/RPi), macOS (Intel/M-series), Windows** |
+| **Network Encryption** | Cleartext HTTP only | **Built-in HTTPS with automatic TLS certificate generation** |
+| **Authentication** | Hardcoded plaintext credentials | **PBKDF2-HMAC-SHA256, constant-time compare, brute-force rate limiter** |
+| **Session Security** | Cleartext Basic Auth | **Cryptographically signed HMAC tokens in HttpOnly/Strict cookies** |
+| **CSRF Defense** | None | **Synchronizer token pattern on all state-changing endpoints** |
+| **File Jail / Path Security** | Vulnerable to symlink traversal | **Chroot-style path jail with symlink resolution & atomic writes** |
+| **File Overwriting** | Silently replaced existing files | **Automatic safe deduplication (`filename (1).ext`)** |
+| **Media Downloader** | Command injection & SSRF risks | **URL allowlisting, flag disallow, SSRF filter, context cancellation** |
+| **Task Engine** | Unbounded memory growth | **Bounded worker pool, channel queue, ring buffer auto-eviction** |
+| **Executable Size** | Script + Python runtime | **~7.5 MB standalone stripped executable** |
 
 ---
 
 ## ✨ Key Features
 
-### 🖥 Interactive Dashboard
-- **Live System Monitor** — CPU, RAM, and disk usage in real time
-- **Responsive UI** — Dark mode with CSS3 animations
-- **Instant Search** — Client-side filtering for thousands of files
+### 🖥 Interactive Dark Mode Dashboard
+- **Live System Telemetry** — Real-time CPU load, RAM utilization, and disk space gauges.
+- **Embedded Web Client** — HTML, CSS, JS, and icons are embedded directly inside the binary via `//go:embed`.
+- **Instant Search** — High-speed client-side filtering across directories.
 
-### ⚡ Background Task Manager
-- **Asynchronous Processing** — No server freeze during heavy tasks
-- **Live Task Console** — View logs, cancel or retry tasks
-- **Queue System** — Sequential `yt-dlp` downloads
+### 📁 Advanced File Management
+- **Multi-File Drag & Drop Uploads** — Real-time percentage progress bar and upload cancellation.
+- **Resumable Downloads** — HTTP Range (`206 Partial Content`) request support.
+- **Trash Bin Protection** — Safe deletion moves items to `.pycloud_trash` before permanent removal.
+- **Safe Rename & Folders** — In-browser renaming and folder creation inside a secure jail.
 
-### 📁 File Management
-- **Smart Uploads** — Drag & drop with progress bar and cancel
-- **Rename** — Rename files directly in-browser
-- **Smart Delete**
-  - Files: instant removal
-  - Folders: **Nuclear Delete** (`shutil.rmtree`)
-- **Auto Categorization**
-  - Manual Uploads
-  - YouTube Library
-  - Old Root Files
+### 🎬 Cinema Mode Media Streaming
+- **Video Player** — Native streaming for MP4, MKV, WebM, MOV with instant seek.
+- **Auto Subtitle Pairing** — Automatically detects and loads adjacent `.vtt` and `.srt` subtitle files.
+- **Audio & Image Viewer** — In-browser high-fidelity playback.
 
-⚠️ Folder deletion is immediate and irreversible.
-
-### 🎬 Media Streaming
-- **Cinema Mode** — MP4 / MKV / WebM
-- **Smart Subtitles** — Auto-load `.vtt`
-- **Large File Handling** — Files >400MB use download mode
-
-### 🔗 Integrations & Security
-- **YouTube / Social Downloader** — Powered by `yt-dlp`
-- **Basic Authentication**
-- **Hidden System Files**
+### ⚡ Hardened Background Task Engine
+- **Media Fetcher** — Download media from YouTube, Vimeo, Soundcloud, Twitch, Reddit, TikTok, etc.
+- **Live Task Console** — Real-time process logs, task cancellation, and retry capabilities.
+- **Isolated Execution** — Strictly blocks argument injections and private/internal network access.
 
 ---
 
-## 🛠 Setup
+## ⚡ Quick Start
 
-### Prerequisites
+### 1. Download the Binary
+Download the pre-compiled binary for your system from the [`dist/`](dist/) folder:
 
+- **Linux (x86_64):** `pycloud-linux-amd64`
+- **Raspberry Pi / Linux ARM64:** `pycloud-linux-arm64`
+- **macOS Apple Silicon (M1/M2/M3/M4):** `pycloud-darwin-arm64`
+- **macOS Intel:** `pycloud-darwin-amd64`
+- **Windows (x64):** `pycloud-windows-amd64.exe`
+
+### 2. Run PyCloud
 ```bash
-sudo apt update
-sudo apt install python3 ffmpeg
+# On Linux / macOS:
+chmod +x pycloud
+./pycloud
+
+# On Windows:
+pycloud-windows-amd64.exe
 ```
 
-FFmpeg is required for merging YouTube audio + video.
+That's it! Open your web browser to:
+```
+https://localhost:8443
+```
+*(On first run, PyCloud will automatically generate a self-signed TLS certificate and prompt you to set an admin password).*
 
 ---
 
-### 📥 Download `secure_server.py`
+## ⚙️ Configuration & Flags
+
+PyCloud creates a `config.json` file in its working directory, or you can customize it via command-line flags or environment variables:
 
 ```bash
+# Run on custom port with custom storage location:
+./pycloud -port 9000 -root /mnt/storage
+
+# Bind only to localhost (safe for reverse proxy like Caddy / Nginx):
+./pycloud -bind 127.0.0.1 -port 8080 -no-tls
+
+# Set admin password directly from command line:
+./pycloud -set-password "MySuperSecretPassword123!"
+
+# Use custom TLS certificates:
+./pycloud -cert /path/to/fullchain.pem -key /path/to/privkey.pem
+```
+
+### Environment Variables
+- `PYCLOUD_PORT`: Override HTTP/HTTPS listening port.
+- `PYCLOUD_BIND`: Override bind address (`127.0.0.1` or `0.0.0.0`).
+- `PYCLOUD_ROOT`: Override root storage directory.
+- `PYCLOUD_TLS`: Set to `false` to disable TLS.
+- `PYCLOUD_PASSWORD`: Set or update admin password.
+
+---
+
+## 🛠 Building from Source
+
+PyCloud uses standard Go without any third-party external dependencies:
+
+```bash
+# Clone the repository
 git clone https://github.com/Gaurav5189/PyCloud-Server.git
 cd PyCloud-Server
-```
 
-Or:
+# Run tests
+make test
 
-```bash
-wget https://raw.githubusercontent.com/Gaurav5189/PyCloud-Server/main/secure_server.py
-```
+# Build single stripped binary
+make build
 
----
-
-### Download yt-dlp
-
-```bash
-wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux
-mv yt-dlp_linux yt-dlp
-chmod +x yt-dlp
+# Cross-compile for all operating systems (Linux, Mac, Windows)
+make release
 ```
 
 ---
 
-## ⚙️ Configuration
+## 📜 Security Architecture & Audit Report
 
-Edit `secure_server.py`:
+PyCloud v2.0 was designed directly from an exhaustive security audit. Full vulnerability remediations:
 
-```python
-PORT = 8080
-USERNAME = "admin"
-PASSWORD = "CHANGE_THIS_PASSWORD"
-ROOT_DIR = "/your/path/here"
-```
-
-Recommended: use an **empty directory** for `ROOT_DIR` for a clean start. You can add files later.
-
----
-
-## ▶️ Run the Server
-
-```bash
-nohup python3 secure_server.py &
-```
+| Finding | Remediation in v2.0 |
+|---|---|
+| **C1: Plaintext Credentials** | Config stored PBKDF2-HMAC-SHA256 salted hashes. |
+| **C2: Cleartext HTTP** | Native TLS 1.2+ server with auto-generated self-signed certificates. |
+| **C3: `yt-dlp` Command Injection** | URL whitelist (`https://`), `--` argument separator, strict flag blocking. |
+| **C4: Symlink Path Traversal** | Chroot-style `SafePathJail` evaluates symlinks and canonical boundaries. |
+| **C5: Arbitrary Media File Read** | Extension whitelist; jailed file paths only. |
+| **H1: Brute Force Attacks** | In-memory token-bucket rate limiter (5 failed attempts per 5 minutes per IP). |
+| **H3 & H4: Stored & DOM XSS** | 100% textContent rendering; all user input strictly sanitized in DOM. |
+| **H5: Cross-Site Request Forgery** | Double-submit / anti-CSRF token verification on all POST/DELETE/PATCH. |
+| **H7: Overwriting Uploads** | Non-destructive atomic writes and automatic deduplication naming. |
+| **H8: Server-Side Request Forgery** | Blocks `file://`, private RFC1918 subnets, and loopback IPs. |
 
 ---
 
-## 🌐 Accessing PyCloud
+## 🖼 Screenshots
 
-Open your browser:
-
-```
-http://<your_ip>:8080
-```
-
-Examples:
-- http://localhost:8080
-- http://192.168.1.100:8080
-- http://your_public_ip:8080
-
----
-
-## � Important Commands
-
-### 🟢 Server Management
-- `nohup python3 secure_server.py &` **Start Server**: Runs your Python script in the background so it stays alive even if you close the window.
-- `pkill -f secure_server.py` **Stop Server**: Forcefully stops (kills) the Python server process instantly.
-
-### 🛠️ Debugging & Troubleshooting
-- `cat nohup.out` **Read Logs**: Prints the server's output log to the screen (useful for seeing errors).
-- `lsof -i :8080` **Check Port**: Shows exactly which program is holding onto Port 8080.
-- `ps aux | grep secure_server.py` **Find PID**: Lists running processes to see if your server is active and what its Process ID (PID) is.
-
----
-
-## �🖼 Screenshots
-
-| Dashboard | Media download |
+| Dashboard & Files | Media Download & Tasks |
 |:---:|:---:|
 | <img src="assets/image01.png" width="45%"> | <img src="assets/image02.png" width="45%"> |
 
@@ -170,7 +172,7 @@ Examples:
 
 ## 📜 License
 
-Open Source. Free to modify and use.
+Open Source under the MIT License. Free to modify, self-host, and use.
 
 <div align="center">
 
