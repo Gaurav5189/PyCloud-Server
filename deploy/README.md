@@ -78,6 +78,8 @@ systemctl status pycloud caddy --no-pager
 Because `WorkingDirectory` is where `config.json` and `certs/` live, keep it
 pointed at the same directory you ran PyCloud from manually.
 
+for live logs `journalctl -u pycloud -f`
+
 ## Troubleshooting
 
 | Symptom | Check |

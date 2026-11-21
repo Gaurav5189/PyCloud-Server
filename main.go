@@ -71,6 +71,10 @@ func main() {
 	if cfg.YtDlpCookies != "" {
 		if _, err := os.Stat(cfg.YtDlpCookies); err != nil {
 			log.Printf("⚠️  yt_dlp_cookies is set to %q but the file is not readable: %v", cfg.YtDlpCookies, err)
+		} else if f, err := os.OpenFile(cfg.YtDlpCookies, os.O_WRONLY, 0); err != nil {
+			log.Printf("⚠️  yt_dlp_cookies %q is read-only: yt-dlp cannot save rotated cookies back, so they will expire sooner: %v", cfg.YtDlpCookies, err)
+		} else {
+			_ = f.Close()
 		}
 	}
 	statsCollector := NewStatsCollector(cfg.RootDir)

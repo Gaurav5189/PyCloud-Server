@@ -135,6 +135,25 @@ sudo ./deploy/install-caddy.sh 203.0.113.10.nip.io
 
 Then browse to `https://203.0.113.10.nip.io`. Allow inbound **TCP 80 and 443** in the cloud firewall; 8443 no longer needs to be public. Full instructions and troubleshooting: [`deploy/README.md`](deploy/README.md).
 
+### Run it in the background (Linux, systemd)
+
+Running `./pycloud` in a terminal stops when you close the session. `deploy/pycloud.service` starts it at boot and restarts it if it crashes. The checked-in unit assumes user `admin`, working directory `/home/admin/PyCloud-Server`, and storage `/home/admin/storage` — edit those if yours differ:
+
+```bash
+# Stop any instance you started manually first (Ctrl+C), then:
+sudo cp deploy/pycloud.service /etc/systemd/system/pycloud.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now pycloud
+
+systemctl status pycloud --no-pager    # is it running?
+journalctl -u pycloud -f               # live logs
+sudo systemctl restart pycloud         # after a config change or binary upgrade
+sudo systemctl stop pycloud            # stop it
+sudo systemctl disable pycloud         # do not start at boot
+```
+
+`WorkingDirectory` is where `config.json` and `certs/` are read, so point it at the directory you were already running PyCloud from. `systemctl status pycloud` only works **after** the unit is installed; before that systemd answers `Unit pycloud.service could not be found`.
+
 ## Usage
 
 - **First run** — the browser shows a setup screen. Set an admin password (minimum 8 characters), or preset one with `./pycloud -set-password 'your-long-password'`.
@@ -369,7 +388,7 @@ This is yt-dlp, not PyCloud — YouTube is refusing the request. Two common caus
    "yt_dlp_extra_args": ["--js-runtimes", "deno"]
    ```
 
-2. **Datacenter IP.** YouTube treats cloud and VPS addresses as bots and demands a signed-in session. Export cookies from a browser where you are signed in (Netscape `cookies.txt` format) and point PyCloud at the file:
+2. **Datacenter IP.** YouTube treats cloud and VPS addresses as bots and demands a signed-in session. Export cookies from a private window (see the cookies entry below for an export that lasts) and point PyCloud at the file:
 
    ```json
    "yt_dlp_cookies": "/srv/pycloud/cookies.txt"
@@ -378,6 +397,21 @@ This is yt-dlp, not PyCloud — YouTube is refusing the request. Two common caus
    Keep that file private (`chmod 600`) — it grants access to your account. If YouTube still blocks the IP, route yt-dlp through a residential proxy instead: `"yt_dlp_extra_args": ["--proxy", "http://user:pass@host:port"]`.
 
 Restart PyCloud after editing `config.json`. If `yt_dlp_cookies` is set but unreadable, the startup log warns about it.
+</details>
+
+<details>
+<summary><strong>"The provided YouTube account cookies are no longer valid" (cookies keep expiring)</strong></summary>
+
+YouTube **rotates** the session cookies (`__Secure-1PSIDTS`, `__Secure-3PSIDTS`, …) on any open YouTube tab. A `cookies.txt` exported from a tab you keep using is already stale, which is why it can die in minutes. There is no static cookie file that stays valid forever, but you can get weeks instead of minutes:
+
+1. **Export from a session nothing else will touch.** Open a private/incognito window → sign in with a **throwaway** account → in that same tab open `https://www.youtube.com/robots.txt` → export the `youtube.com` cookies to `cookies.txt` → **close the window** (do not sign out, which kills the session).
+2. **Let yt-dlp refresh the file.** With `--cookies FILE`, yt-dlp writes the updated cookie jar back when it exits. Keep the file **writable by the PyCloud user** (`chown admin:admin ~/yt-cookies.txt && chmod 600 ~/yt-cookies.txt`). Do **not** mount it read-only or overwrite it with the same stale snapshot on every run; the startup log warns when the file is read-only.
+3. **If it still fails on a cloud host, the IP is the problem.** Datacenter ranges are challenged harder than home connections. Durable options:
+   - Route only yt-dlp through a **residential proxy**: `"yt_dlp_extra_args": ["--proxy", "http://user:pass@host:port"]`.
+   - Run PyCloud at home, or give it a residential egress (e.g. a Tailscale exit node on a home device).
+   - Add a **PO token provider** such as [bgutil-ytdlp-pot-provider](https://github.com/Brainicism/bgutil-ytdlp-pot-provider). It reduces bot checks but does **not** bypass IP restrictions, so cookies are still needed on a VPS.
+
+The file is a live session for your Google account: keep it `chmod 600` and prefer a throwaway account. `--cookies-from-browser` is convenient on a laptop but there is no browser on a headless server.
 </details>
 
 <details>

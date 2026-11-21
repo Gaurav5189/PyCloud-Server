@@ -168,6 +168,8 @@ Then set `"yt_dlp_path": "/tmp/yt-dlp-stub"` in `config.json` and restart. `/api
 
 **ffmpeg is required for the default format.** The `+` in `yt_dlp_format` joins separate video and audio streams, which only ffmpeg can mux. `AddDownloadTask` refuses to queue a merge download when no ffmpeg was resolved, instead of letting yt-dlp write a silent video-only `.fNNN.mp4` plus a detached `.fNNN.m4a`. ffmpeg is resolved once at startup from `yt_dlp_ffmpeg_path` or `PATH`; the banner prints it, and the resolved path is passed to yt-dlp as `--ffmpeg-location` so a restricted service `PATH` cannot hide it.
 
+**Cookie rotation.** YouTube refreshes its session cookies on open tabs, so a `cookies.txt` exported from a live tab goes stale quickly. yt-dlp rewrites the `--cookies` file on exit, so keep it writable by the service user and do not replace it on every run; `main.go` warns when the file is read-only. On a datacenter IP cookies alone are a losing battle — recommend residential egress (proxy or a home/Tailscale exit node) or a PO token provider, which still does not bypass IP restrictions. See README → Troubleshooting.
+
 **Frontend errors.** Open the browser console. The strict CSP (`script-src 'self'`) means inline scripts and CDNs are blocked by design — all JavaScript must live in `frontend/js/*.js`. If a request 401s, the client shows the login dialog; a 428 shows the setup dialog.
 
 **Storage sanity.** The jail refuses paths outside `root_dir`. If an operation 403s, check `SafePathJail` and confirm the path is relative to the storage root and not a symlink pointing out of it.
@@ -207,6 +209,22 @@ Two things to keep in mind when touching proxy-adjacent code:
 
 - **Client IP.** `ClientIP()` in `security.go` reads `X-Forwarded-For` then `X-Real-IP` before falling back to `RemoteAddr`. Caddy sets `X-Forwarded-For`, so login rate-limiting sees the real client. Anything that trusts these headers must only be reachable from the proxy — hence binding PyCloud to `127.0.0.1`.
 - **`Secure` cookies and HSTS** are only emitted when `cfg.TLSEnabled` is true (`middleware.go`, `auth_handlers.go`). Run PyCloud with TLS enabled even behind a TLS-terminating proxy; if you must use `-no-tls`, know that those two protections are dropped.
+
+### Running it in the background (systemd)
+
+`deploy/pycloud.service` is the checked-in unit: user/group `admin`, `WorkingDirectory=/home/admin/PyCloud-Server`, and `ExecStart=/home/admin/PyCloud-Server/dist/pycloud-linux-amd64 -bind 127.0.0.1 -port 8443 -root /home/admin/storage`. Adjust the paths if yours differ, then install it:
+
+```bash
+sudo cp deploy/pycloud.service /etc/systemd/system/pycloud.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now pycloud
+systemctl status pycloud --no-pager
+journalctl -u pycloud -f        # live logs
+```
+
+Stop any manually started instance first — otherwise the service cannot bind 8443 and `Restart=on-failure` will retry every 3 s. `WorkingDirectory` is where `config.json` and `certs/` are read; moving it silently generates a new config (and loses the admin password). After a binary upgrade: `sudo systemctl restart pycloud`.
+
+`systemctl status pycloud` before this install returns `Unit pycloud.service could not be found` — the unit exists in the repo, not in `/etc/systemd/system/`.
 
 ## Releasing
 
