@@ -1,0 +1,1990 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PyCloud · Redesign Concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   PyCloud v8.6 — Redesign Concept
+   Design language: dark-first, quiet chrome, high information
+   density. Inspired by Linear / Vercel Geist / Raycast.
+   ============================================================ */
+
+/* ---------- 1. Tokens ---------- */
+:root{
+  --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+
+  --bg:#0B0E14; --bg-2:#0D1119; --card:#10141D; --card-2:#141927; --inset:#0B0F16;
+  --line:rgba(148,163,184,.10); --line-2:rgba(148,163,184,.20);
+  --t1:#EEF2F8; --t2:#96A1B7; --t3:#5D6A80;
+
+  --cyan:#22D3EE; --blue:#3B82F6;
+  --grad:linear-gradient(135deg,#22D3EE 0%,#3B82F6 100%);
+  --grad-soft:linear-gradient(135deg,rgba(34,211,238,.16),rgba(59,130,246,.16));
+
+  --ok:#34D399; --ok-bg:rgba(52,211,153,.12);
+  --warn:#FBBF24; --warn-bg:rgba(251,191,36,.12);
+  --bad:#F87171; --bad-bg:rgba(248,113,113,.12);
+  --vio:#A78BFA; --vio-bg:rgba(167,139,250,.14);
+  --pink:#F472B6; --pink-bg:rgba(244,114,182,.14);
+  --amber:#FBBF24; --amber-bg:rgba(251,191,36,.14);
+
+  --r-s:8px; --r-m:12px; --r-l:18px;
+  --shadow:0 1px 2px rgba(2,4,10,.4),0 12px 32px -16px rgba(2,4,10,.6);
+  --shadow-lg:0 24px 64px -24px rgba(2,4,10,.8);
+  --glow-o:.55;
+  --top-glass:rgba(11,14,20,.78);
+}
+html[data-theme="light"]{
+  --bg:#F3F5F9; --bg-2:#EDF0F6; --card:#FFFFFF; --card-2:#F7F9FC; --inset:#F1F4F9;
+  --line:#E2E7F0; --line-2:#CBD3E1;
+  --t1:#0F1A2E; --t2:#4E5D75; --t3:#8B97AB;
+
+  --cyan:#0891B2; --blue:#2563EB;
+  --grad:linear-gradient(135deg,#06B6D4 0%,#3B82F6 100%);
+
+  --ok:#059669; --ok-bg:rgba(5,150,105,.10);
+  --warn:#B45309; --warn-bg:rgba(180,83,9,.10);
+  --bad:#DC2626; --bad-bg:rgba(220,38,38,.10);
+  --vio:#7C3AED; --vio-bg:rgba(124,58,237,.10);
+  --pink:#DB2777; --pink-bg:rgba(219,39,119,.10);
+  --amber:#B45309; --amber-bg:rgba(180,83,9,.10);
+
+  --shadow:0 1px 2px rgba(15,26,46,.06),0 12px 32px -16px rgba(15,26,46,.14);
+  --shadow-lg:0 24px 64px -28px rgba(15,26,46,.24);
+  --glow-o:.35;
+  --top-glass:rgba(243,245,249,.82);
+}
+
+/* ---------- 2. Reset / base ---------- */
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--font); background:var(--bg); color:var(--t1);
+  font-size:14px; line-height:1.55; -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(900px 480px at 12% -8%, rgba(34,211,238,.10), transparent 60%),
+    radial-gradient(1000px 520px at 88% -12%, rgba(59,130,246,.10), transparent 60%);
+  opacity:var(--glow-o);
+}
+img,svg{display:block}
+a{color:var(--cyan); text-decoration:none}
+button{font-family:inherit; font-size:inherit; color:inherit; background:none; border:none; cursor:pointer}
+input,select{font-family:inherit; font-size:inherit; color:inherit}
+::selection{background:rgba(34,211,238,.28)}
+:focus-visible{outline:2px solid var(--cyan); outline-offset:2px; border-radius:6px}
+
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line-2); border-radius:8px; border:2px solid transparent; background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:var(--t3); border:2px solid transparent; background-clip:content-box}
+::-webkit-scrollbar-track{background:transparent}
+
+.mono{font-family:var(--mono)}
+.muted{color:var(--t2)}
+.hidden{display:none !important}
+
+/* ---------- 3. App shell ---------- */
+.app{position:relative; z-index:1; display:grid; grid-template-columns:264px 1fr; min-height:100vh}
+.main{min-width:0; display:flex; flex-direction:column}
+.sb-scrim{position:fixed;inset:0;z-index:125;background:rgba(4,7,12,.6);opacity:0;pointer-events:none;transition:opacity .2s}
+.sb-scrim.open{opacity:1;pointer-events:auto}
+
+/* ---------- 4. Sidebar ---------- */
+.sidebar{
+  position:sticky; top:0; height:100vh; overflow-y:auto; overflow-x:hidden;
+  display:flex; flex-direction:column; gap:6px;
+  background:var(--bg-2); border-right:1px solid var(--line); padding:18px 14px;
+  transition:transform .25s ease;
+}
+.sb-brand{display:flex; align-items:center; gap:11px; padding:4px 8px 16px}
+.sb-logo{
+  width:38px;height:38px;border-radius:11px;background:var(--grad);
+  display:grid;place-items:center;color:#fff;flex:none;
+  box-shadow:0 4px 16px -4px rgba(34,211,238,.5);
+}
+.sb-logo svg{width:20px;height:20px}
+.sb-name{font-size:16.5px;font-weight:700;letter-spacing:-.02em}
+.sb-ver{font-family:var(--mono);font-size:10.5px;color:var(--t2);border:1px solid var(--line-2);padding:1px 7px;border-radius:99px;margin-top:1px;display:inline-block}
+
+.sb-label{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--t3);padding:12px 10px 6px}
+.nav-item{
+  display:flex;align-items:center;gap:11px;width:100%;
+  padding:9px 10px;border-radius:var(--r-s);color:var(--t2);font-weight:500;font-size:13.5px;
+  position:relative; transition:background .15s,color .15s; text-align:left;
+}
+.nav-item svg{width:17px;height:17px;flex:none;opacity:.85}
+.nav-item:hover{background:var(--line);color:var(--t1)}
+.nav-item.active{background:var(--grad-soft);color:var(--t1);font-weight:600}
+.nav-item.active::before{content:"";position:absolute;left:-14px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--grad)}
+.nav-item.active svg{color:var(--cyan);opacity:1}
+.nav-badge{margin-left:auto;font-family:var(--mono);font-size:10.5px;font-weight:600;background:var(--grad);color:#fff;border-radius:99px;padding:1px 7px}
+.nav-sub{display:flex;align-items:center;gap:9px;width:100%;padding:6.5px 10px 6.5px 38px;border-radius:7px;color:var(--t3);font-size:12.5px;text-align:left}
+.nav-sub:hover{color:var(--t1);background:var(--line)}
+.nav-sub .cat-dot{width:7px;height:7px;border-radius:99px;flex:none}
+
+.sb-server{
+  margin-top:auto;background:var(--card);border:1px solid var(--line);border-radius:var(--r-m);
+  padding:12px; display:flex;flex-direction:column;gap:9px;
+}
+.sb-server .row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2)}
+.sb-server .row svg{width:13px;height:13px;flex:none;color:var(--t3)}
+.sb-server .val{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--t1)}
+.sb-user{display:flex;align-items:center;gap:10px;padding:10px 8px 2px;border-top:1px solid var(--line);margin-top:10px}
+.avatar{width:30px;height:30px;border-radius:99px;background:var(--grad);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;flex:none}
+.sb-user .u-name{font-size:13px;font-weight:600}
+.sb-user .u-role{font-size:11px;color:var(--t3)}
+
+/* ---------- 5. Topbar ---------- */
+.topbar{
+  position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:14px;
+  padding:0 26px;height:62px;
+  background:var(--top-glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);
+}
+.tb-title{font-size:15.5px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.tb-sub{font-size:11.5px;color:var(--t3);font-family:var(--mono);margin-top:-2px;white-space:nowrap}
+.tb-actions{margin-left:auto;display:flex;align-items:center;gap:9px}
+.hamburger{display:none}
+
+.search-pill{
+  display:flex;align-items:center;gap:9px;width:300px;height:36px;
+  background:var(--inset);border:1px solid var(--line);border-radius:10px;
+  padding:0 11px;color:var(--t3);font-size:13px;
+  transition:border-color .15s;
+}
+.search-pill:hover{border-color:var(--line-2);color:var(--t2)}
+.search-pill svg{width:15px;height:15px;flex:none}
+.search-pill .kbd{margin-left:auto}
+.kbd{
+  font-family:var(--mono);font-size:10.5px;color:var(--t2);
+  background:var(--card);border:1px solid var(--line-2);border-bottom-width:2px;
+  border-radius:5px;padding:1px 6px;white-space:nowrap;
+}
+
+/* ---------- 6. Buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 15px;
+  border-radius:10px;font-weight:600;font-size:13px;white-space:nowrap;
+  transition:transform .12s,box-shadow .15s,background .15s,border-color .15s,filter .15s;
+  border:1px solid transparent;
+}
+.btn svg{width:15px;height:15px}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--grad);color:#fff;box-shadow:0 4px 14px -6px rgba(34,211,238,.65)}
+.btn-primary:hover{box-shadow:0 6px 20px -6px rgba(34,211,238,.8);filter:brightness(1.06)}
+.btn-soft{background:var(--card);border-color:var(--line-2);color:var(--t1)}
+.btn-soft:hover{border-color:var(--t3);background:var(--card-2)}
+.btn-ghost{color:var(--t2)}
+.btn-ghost:hover{background:var(--line);color:var(--t1)}
+.btn-danger{background:var(--bad);color:#fff}
+.btn-danger:hover{filter:brightness(1.08)}
+.btn-danger-soft{background:var(--bad-bg);color:var(--bad);border-color:rgba(248,113,113,.3)}
+.btn-danger-soft:hover{background:rgba(248,113,113,.2)}
+.btn-sm{height:30px;padding:0 11px;font-size:12px;border-radius:8px}
+.btn-block{width:100%;justify-content:center}
+.icon-btn{
+  width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:var(--t2);
+  border:1px solid transparent;transition:background .15s,color .15s,border-color .15s;flex:none;
+}
+.icon-btn svg{width:16px;height:16px}
+.icon-btn:hover{background:var(--line);color:var(--t1)}
+.icon-btn.bordered{border-color:var(--line-2);background:var(--card)}
+.icon-btn.bordered:hover{border-color:var(--t3)}
+
+/* ---------- 7. Views / container ---------- */
+.view{display:none; padding:24px 26px 60px; max-width:1460px; width:100%; margin:0 auto; animation:fadeUp .3s ease}
+.view.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.page-head{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+.page-head h1{font-size:21px;font-weight:700;letter-spacing:-.02em}
+.page-head .sub{color:var(--t2);font-size:13px}
+.page-head .right{margin-left:auto;display:flex;gap:9px;flex-wrap:wrap}
+
+/* ---------- 8. Cards ---------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--shadow)}
+.card-h{display:flex;align-items:center;gap:10px;padding:15px 18px;border-bottom:1px solid var(--line)}
+.card-t{font-size:13.5px;font-weight:650;letter-spacing:-.01em}
+.card-t svg{width:15px;height:15px;color:var(--t3);margin-right:2px;vertical-align:-2px}
+.card-h .link{margin-left:auto;font-size:12px;font-weight:600;color:var(--cyan);display:flex;align-items:center;gap:4px}
+.card-h .link svg{width:13px;height:13px}
+.card-b{padding:18px}
+
+/* ---------- 9. Badges / chips / tags ---------- */
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;letter-spacing:.02em;border-radius:99px;padding:2.5px 9px;font-family:var(--mono);text-transform:uppercase}
+.badge svg{width:11px;height:11px}
+.b-done{background:var(--ok-bg);color:var(--ok)}
+.b-run{background:var(--grad-soft);color:var(--cyan)}
+.b-queue{background:var(--line);color:var(--t2)}
+.b-cancel{background:var(--bad-bg);color:var(--bad)}
+.b-warn{background:var(--warn-bg);color:var(--warn)}
+.dot{width:7px;height:7px;border-radius:99px;display:inline-block;flex:none}
+.dot.pulse{animation:pulse 1.8s ease infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(52,211,153,.5)}50%{box-shadow:0 0 0 5px rgba(52,211,153,0)}}
+
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:99px;
+  border:1px solid var(--line-2);color:var(--t2);font-size:12.5px;font-weight:500;background:var(--card);
+  transition:all .15s;
+}
+.chip:hover{border-color:var(--t3);color:var(--t1)}
+.chip.active{background:var(--grad-soft);border-color:rgba(34,211,238,.45);color:var(--t1);font-weight:600}
+.chip .n{font-family:var(--mono);font-size:10.5px;color:var(--t3)}
+.chip.active .n{color:var(--cyan)}
+.chip .cat-dot{width:7px;height:7px;border-radius:99px}
+
+.tag{display:inline-flex;align-items:center;font-size:10.5px;font-weight:600;font-family:var(--mono);color:var(--t3);border:1px solid var(--line-2);border-radius:5px;padding:0 5px;letter-spacing:.03em}
+
+/* ---------- 10. Inputs ---------- */
+.input,.select{
+  width:100%;height:38px;background:var(--inset);border:1px solid var(--line-2);border-radius:10px;
+  padding:0 12px;font-size:13.5px;color:var(--t1);transition:border-color .15s,box-shadow .15s;
+}
+.input::placeholder{color:var(--t3)}
+.input:focus,.select:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(34,211,238,.15)}
+.select{
+  appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:32px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2396A1B7' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center;
+}
+label.f-label{display:block;font-size:12px;font-weight:600;color:var(--t2);margin:0 0 6px 2px}
+.field-gap{margin-top:16px}
+.input-wrap{position:relative}
+.input-wrap .input{padding-left:38px}
+.input-wrap>svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--t3);pointer-events:none}
+.input-wrap .in-right{position:absolute;right:7px;top:50%;transform:translateY(-50%)}
+
+.switch{position:relative;display:inline-flex;flex:none;width:38px;height:22px;cursor:pointer}
+.switch input{position:absolute;opacity:0;width:100%;height:100%;cursor:pointer;margin:0}
+.switch .track{position:absolute;inset:0;background:var(--line-2);border-radius:99px;transition:background .18s}
+.switch .thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:99px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35);transition:transform .18s}
+.switch input:checked ~ .track{background:var(--grad)}
+.switch input:checked ~ .thumb{transform:translateX(16px)}
+
+.segmented{display:flex;background:var(--inset);border:1px solid var(--line-2);border-radius:10px;padding:3px;gap:3px}
+.seg-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:32px;border-radius:8px;font-size:12.5px;font-weight:600;color:var(--t2);transition:all .15s}
+.seg-btn svg{width:14px;height:14px}
+.seg-btn:hover{color:var(--t1)}
+.seg-btn.active{background:var(--card);color:var(--t1);box-shadow:var(--shadow)}
+
+/* ---------- 11. Stats ---------- */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px}
+.stat{padding:16px 16px 12px;position:relative;overflow:hidden;transition:border-color .2s,transform .2s}
+.stat:hover{border-color:var(--line-2);transform:translateY(-1px)}
+.stat-top{display:flex;align-items:center;gap:8px}
+.stat-ico{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:none}
+.stat-ico svg{width:15px;height:15px}
+.stat-label{font-size:12px;font-weight:600;color:var(--t2)}
+.stat-val{font-family:var(--mono);font-size:26px;font-weight:600;letter-spacing:-.03em;margin-top:10px;line-height:1.1}
+.stat-val .unit{font-size:13px;color:var(--t3);font-weight:500;margin-left:2px}
+.stat-foot{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--t3);font-family:var(--mono);margin-top:8px;white-space:nowrap}
+.stat-up{color:var(--ok);display:inline-flex;align-items:center;gap:2px}
+.stat-up svg{width:11px;height:11px}
+
+.spark{width:100%;height:52px;margin-top:6px;overflow:visible}
+.spark .sp-line{fill:none;stroke-width:2;stroke-linecap:round}
+.ring-wrap{position:relative;width:104px;height:104px;flex:none}
+.ring{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .ring-bg{fill:none;stroke:var(--line);stroke-width:9}
+.ring .ring-val{fill:none;stroke:url(#ringGrad);stroke-width:9;stroke-linecap:round;transition:stroke-dashoffset .8s cubic-bezier(.4,0,.2,1)}
+.ring-center{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.ring-center .rv{font-family:var(--mono);font-size:21px;font-weight:600;letter-spacing:-.03em}
+.ring-center .rl{font-size:10.5px;color:var(--t3);font-family:var(--mono)}
+
+/* ---------- 12. Progress ---------- */
+.progress{height:5px;border-radius:99px;background:var(--line);overflow:hidden;position:relative}
+.progress-fill{height:100%;border-radius:99px;background:var(--grad);transition:width .5s ease;position:relative}
+.progress-fill.shimmer::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);
+  animation:shimmer 1.6s infinite;
+}
+@keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.progress-fill.ok{background:var(--ok)}
+.progress-fill.bad{background:var(--bad)}
+
+/* ---------- 13. Tasks ---------- */
+.task{display:flex;gap:13px;align-items:flex-start;padding:14px 18px;border-bottom:1px solid var(--line)}
+.task:last-child{border-bottom:none}
+.task-ico{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;margin-top:2px}
+.task-ico svg{width:16px;height:16px}
+.task-body{flex:1;min-width:0}
+.task-r1{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.task-name{font-size:13.5px;font-weight:600;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.task-r1 .badge{margin-left:auto}
+.task-url{font-family:var(--mono);font-size:11px;color:var(--t3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task-progress{display:flex;align-items:center;gap:10px;margin-top:9px}
+.task-progress .progress{flex:1}
+.task-progress .pct{font-family:var(--mono);font-size:11px;color:var(--t2);width:38px;text-align:right;flex:none}
+.task-meta{display:flex;gap:14px;font-family:var(--mono);font-size:10.5px;color:var(--t3);margin-top:7px;flex-wrap:wrap}
+.task-actions{display:flex;gap:4px;flex:none;align-self:center}
+.task .t-btn{width:29px;height:29px;border-radius:8px;display:grid;place-items:center;color:var(--t3);transition:all .15s}
+.task .t-btn svg{width:14px;height:14px}
+.task .t-btn:hover{background:var(--line);color:var(--t1)}
+.task .t-btn.danger:hover{background:var(--bad-bg);color:var(--bad)}
+
+.log{
+  margin-top:11px;background:#05070C;border:1px solid rgba(148,163,184,.12);border-radius:9px;
+  font-family:var(--mono);font-size:11.5px;line-height:1.75;color:#8BE9B8;
+  padding:12px 14px;max-height:210px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;
+}
+html[data-theme="light"] .log{background:#0C1220;color:#7CE3A8}
+.log .dim{color:#5D6A80}
+
+/* ---------- 14. Dropzone ---------- */
+.dropzone{
+  border:1.5px dashed var(--line-2);border-radius:var(--r-m);
+  padding:22px;display:flex;align-items:center;gap:16px;background:var(--card);
+  transition:all .18s;margin-bottom:18px;cursor:pointer;
+}
+.dropzone:hover{border-color:var(--cyan)}
+.dropzone.drag{border-color:var(--cyan);background:var(--grad-soft);border-style:solid}
+.dz-ico{width:42px;height:42px;border-radius:12px;background:var(--grad-soft);display:grid;place-items:center;flex:none;color:var(--cyan)}
+.dz-ico svg{width:19px;height:19px}
+.dz-t{font-size:13.5px;font-weight:600}
+.dz-s{font-size:12px;color:var(--t3);margin-top:2px}
+.dz-progress{flex:1;min-width:160px}
+
+/* ---------- 15. Files ---------- */
+.files-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.files-toolbar .input-wrap{flex:1;min-width:220px;max-width:420px}
+.file-section{margin-bottom:20px}
+.fs-head{display:flex;align-items:center;gap:9px;padding:2px 4px 10px}
+.fs-head .cat-dot{width:8px;height:8px;border-radius:99px}
+.fs-title{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--t2)}
+.fs-count{font-family:var(--mono);font-size:10.5px;color:var(--t3)}
+.file-row{
+  display:flex;align-items:center;gap:13px;padding:10px 14px;border-radius:10px;
+  transition:background .13s;border:1px solid transparent;
+}
+.file-row:hover{background:var(--card);border-color:var(--line)}
+.file-row+.file-row{margin-top:2px}
+.file-list{display:flex;flex-direction:column}
+.f-ico{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;flex:none}
+.f-ico svg{width:16.5px;height:16.5px}
+.t-video{background:var(--vio-bg);color:var(--vio)}
+.t-audio{background:var(--ok-bg);color:var(--ok)}
+.t-image{background:var(--pink-bg);color:var(--pink)}
+.t-archive{background:var(--amber-bg);color:var(--amber)}
+.t-text{background:var(--line);color:var(--t2)}
+.t-folder{background:var(--grad-soft);color:var(--cyan)}
+.f-main{flex:1;min-width:0}
+.f-name{font-size:13.5px;font-weight:550;letter-spacing:-.01em;display:flex;align-items:center;gap:7px}
+.f-name .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.f-name input{background:var(--inset);border:1px solid var(--cyan);border-radius:6px;font-size:13px;padding:2px 8px;color:var(--t1);max-width:100%;min-width:120px}
+.f-meta{font-family:var(--mono);font-size:11px;color:var(--t3);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap}
+.f-actions{display:flex;gap:3px;opacity:0;transition:opacity .15s;flex:none}
+.file-row:hover .f-actions,.file-row:focus-within .f-actions{opacity:1}
+.f-btn{width:29px;height:29px;border-radius:8px;display:grid;place-items:center;color:var(--t3);transition:all .13s}
+.f-btn svg{width:14.5px;height:14.5px}
+.f-btn:hover{background:var(--line-2);color:var(--t1)}
+.f-btn.play{color:var(--t1)}
+.f-btn.play:hover{background:var(--grad);color:#fff}
+.f-btn.danger:hover{background:var(--bad-bg);color:var(--bad)}
+.f-size{font-family:var(--mono);font-size:12px;color:var(--t2);width:74px;text-align:right;flex:none}
+.f-date{font-family:var(--mono);font-size:11px;color:var(--t3);width:96px;text-align:right;flex:none}
+.dur{font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--line);border-radius:4px;padding:0 5px}
+
+.empty{padding:48px 20px;text-align:center;color:var(--t3)}
+.empty svg{width:34px;height:34px;margin:0 auto 12px;color:var(--t3);opacity:.6}
+.empty .t{font-size:14px;font-weight:600;color:var(--t2)}
+.empty .s{font-size:12px;margin-top:4px}
+
+/* ---------- 16. Media ---------- */
+.media-hero{
+  position:relative;border-radius:var(--r-l);overflow:hidden;border:1px solid var(--line);
+  min-height:250px;display:flex;align-items:flex-end;cursor:pointer;margin-bottom:20px;
+  transition:border-color .2s;
+}
+.media-hero:hover{border-color:rgba(34,211,238,.4)}
+.mh-bg{position:absolute;inset:0;background:linear-gradient(120deg,#0E1B36 0%,#1A1030 45%,#0A1E2E 100%)}
+.mh-bg::after{content:"";position:absolute;inset:0;background:radial-gradient(600px 300px at 80% 0%,rgba(124,58,237,.35),transparent 65%),radial-gradient(500px 260px at 15% 100%,rgba(34,211,238,.22),transparent 60%);animation:drift 14s ease-in-out infinite alternate}
+@keyframes drift{from{transform:translateX(-3%) scale(1.02)}to{transform:translateX(3%) scale(1.06)}}
+.mh-fade{position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,rgba(5,8,14,.88) 100%)}
+html[data-theme="light"] .mh-fade{background:linear-gradient(180deg,rgba(15,26,46,0) 30%,rgba(10,16,28,.9) 100%)}
+.mh-play{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:62px;height:62px;border-radius:99px;background:var(--grad);display:grid;place-items:center;color:#fff;
+  box-shadow:0 10px 40px -6px rgba(34,211,238,.7);transition:transform .18s;
+}
+.mh-play svg{width:22px;height:22px;margin-left:2px}
+.media-hero:hover .mh-play{transform:translate(-50%,-50%) scale(1.08)}
+.mh-info{position:relative;padding:22px 24px;display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;width:100%}
+.mh-title{font-size:19px;font-weight:700;letter-spacing:-.02em;color:#fff}
+.mh-sub{font-family:var(--mono);font-size:11.5px;color:rgba(255,255,255,.65);margin-top:3px}
+.mh-progress{position:absolute;left:24px;right:24px;bottom:12px;height:4px;border-radius:99px;background:rgba(255,255,255,.18)}
+.mh-progress .fill{height:100%;border-radius:99px;background:var(--grad);width:62%}
+
+.media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:14px}
+.m-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-m);overflow:hidden;cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s}
+.m-card:hover{transform:translateY(-3px);border-color:var(--line-2);box-shadow:var(--shadow-lg)}
+.m-thumb{position:relative;aspect-ratio:16/9;display:grid;place-items:center;overflow:hidden}
+.m-thumb .grad{position:absolute;inset:0;transition:transform .5s}
+.m-card:hover .m-thumb .grad{transform:scale(1.07)}
+.m-thumb .p-overlay{
+  position:relative;width:42px;height:42px;border-radius:99px;background:rgba(5,8,14,.55);
+  backdrop-filter:blur(6px);display:grid;place-items:center;color:#fff;border:1px solid rgba(255,255,255,.25);
+  transition:all .18s;
+}
+.m-card:hover .p-overlay{background:var(--grad);border-color:transparent;box-shadow:0 6px 22px -6px rgba(34,211,238,.7)}
+.p-overlay svg{width:16px;height:16px;margin-left:2px}
+.m-dur{position:absolute;right:8px;bottom:8px;font-family:var(--mono);font-size:10.5px;background:rgba(5,8,14,.72);color:#fff;border-radius:5px;padding:1px 6px}
+.m-body{padding:11px 13px}
+.m-name{font-size:12.5px;font-weight:600;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.m-sub{font-family:var(--mono);font-size:10.5px;color:var(--t3);margin-top:3px}
+
+.audio-card{display:flex;align-items:center;gap:14px;padding:14px 16px}
+.eq{display:flex;align-items:flex-end;gap:2.5px;height:22px;width:26px;flex:none}
+.eq span{width:4px;border-radius:2px;background:var(--grad);animation:eq 1s ease-in-out infinite}
+.eq span:nth-child(1){height:40%;animation-delay:-.9s}
+.eq span:nth-child(2){height:90%;animation-delay:-.4s}
+.eq span:nth-child(3){height:60%;animation-delay:-.7s}
+.eq span:nth-child(4){height:100%;animation-delay:-.2s}
+@keyframes eq{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1)}}
+.eq.paused span{animation-play-state:paused}
+
+/* ---------- 17. Tables (recent) ---------- */
+.mini-table{width:100%;border-collapse:collapse}
+.mini-table td{padding:10px 18px;border-top:1px solid var(--line);font-size:13px;vertical-align:middle}
+.mini-table tr:first-child td{border-top:none}
+.mini-table tr{transition:background .13s}
+.mini-table tbody tr:hover{background:var(--line)}
+.mini-table .f-ico{width:30px;height:30px;border-radius:8px}
+.mini-table .f-ico svg{width:14px;height:14px}
+.mini-table .nm{font-weight:550;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini-table .sz{font-family:var(--mono);font-size:11.5px;color:var(--t2);text-align:right}
+.mini-table .dt{font-family:var(--mono);font-size:11px;color:var(--t3);text-align:right;width:110px}
+
+/* ---------- 18. Donut / legend ---------- */
+.donut-wrap{display:flex;flex-direction:column;align-items:center;gap:18px}
+.donut{position:relative;width:150px;height:150px;flex:none}
+.donut svg{width:100%;height:100%;transform:rotate(-90deg)}
+.donut .seg{fill:none;stroke-width:17;transition:stroke-dasharray .8s ease}
+.donut-center{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.donut-center .dv{font-family:var(--mono);font-size:19px;font-weight:600;letter-spacing:-.02em}
+.donut-center .dl{font-size:10.5px;color:var(--t3)}
+.legend{width:100%;display:flex;flex-direction:column;gap:11px;min-width:0}
+.lg-row{display:flex;align-items:center;gap:9px;font-size:12.5px;white-space:nowrap}
+.lg-dot{width:9px;height:9px;border-radius:3px;flex:none}
+.lg-row .lbl{overflow:hidden;text-overflow:ellipsis}
+.lg-row .v{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--t2)}
+.lg-row .p{font-family:var(--mono);font-size:10.5px;color:var(--t3);width:42px;text-align:right}
+
+/* ---------- 19. Overlays (modal / palette) ---------- */
+.overlay{
+  position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:20px;
+  background:rgba(4,7,12,.66);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.overlay.open{opacity:1;pointer-events:auto}
+.modal{
+  width:min(480px,100%);background:var(--card);border:1px solid var(--line-2);border-radius:var(--r-l);
+  box-shadow:var(--shadow-lg);transform:translateY(14px) scale(.97);transition:transform .22s cubic-bezier(.34,1.4,.5,1);
+  max-height:calc(100vh - 60px);overflow-y:auto;
+}
+.overlay.open .modal{transform:none}
+.modal-h{display:flex;align-items:center;gap:11px;padding:17px 20px;border-bottom:1px solid var(--line)}
+.modal-ico{width:36px;height:36px;border-radius:11px;background:var(--bad-bg);color:var(--bad);display:grid;place-items:center;flex:none}
+.modal-ico svg{width:17px;height:17px}
+.modal-t{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.modal-s{font-size:12px;color:var(--t2);margin-top:1px}
+.modal-b{padding:20px}
+.modal-f{display:flex;justify-content:flex-end;gap:9px;padding:15px 20px;border-top:1px solid var(--line)}
+
+.palette{width:min(580px,100%);align-self:start;margin-top:12vh}
+.pal-input-wrap{display:flex;align-items:center;gap:11px;padding:15px 18px;border-bottom:1px solid var(--line)}
+.pal-input-wrap svg{width:17px;height:17px;color:var(--t3);flex:none}
+.pal-input{flex:1;background:none;border:none;outline:none;font-size:15px;color:var(--t1)}
+.pal-input::placeholder{color:var(--t3)}
+.pal-list{max-height:380px;overflow-y:auto;padding:8px}
+.pal-group{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);padding:10px 12px 5px}
+.pal-item{display:flex;align-items:center;gap:11px;width:100%;padding:9.5px 12px;border-radius:9px;font-size:13.5px;color:var(--t2);text-align:left}
+.pal-item .pi{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;flex:none;background:var(--line);color:var(--t2)}
+.pal-item .pi svg{width:14px;height:14px}
+.pal-item .sub{font-family:var(--mono);font-size:10.5px;color:var(--t3);margin-left:auto;flex:none}
+.pal-item.sel{background:var(--grad-soft);color:var(--t1)}
+.pal-item.sel .pi{background:var(--grad);color:#fff}
+.pal-empty{padding:28px;text-align:center;color:var(--t3);font-size:13px}
+.pal-foot{display:flex;gap:16px;padding:10px 16px;border-top:1px solid var(--line);font-size:11px;color:var(--t3)}
+.pal-foot .kbd{margin-right:4px}
+
+/* ---------- 20. Player ---------- */
+.player{
+  position:fixed;inset:0;z-index:120;background:#04060B;display:flex;flex-direction:column;
+  opacity:0;pointer-events:none;transition:opacity .25s;
+}
+.player.open{opacity:1;pointer-events:auto}
+html[data-theme="light"] .player{background:#04060B}
+.pl-top{display:flex;align-items:center;gap:12px;padding:16px 22px;z-index:3}
+.pl-title{font-size:14.5px;font-weight:650;color:#fff;letter-spacing:-.01em}
+.pl-badge{font-family:var(--mono);font-size:10.5px;color:#22D3EE;background:rgba(34,211,238,.14);border-radius:5px;padding:1px 7px}
+.pl-close{margin-left:auto}
+.pl-stage{flex:1;position:relative;overflow:hidden;display:grid;place-items:center;min-height:0}
+.aurora{position:absolute;inset:-8%;filter:blur(60px);opacity:.85;transition:filter .3s}
+.aurora::before,.aurora::after{
+  content:"";position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(34,211,238,.55),transparent 70%),
+             radial-gradient(closest-side at 70% 60%,rgba(124,58,237,.5),transparent 70%);
+  animation:swirl 16s linear infinite;
+}
+.aurora::after{background:radial-gradient(closest-side at 30% 70%,rgba(59,130,246,.5),transparent 70%),radial-gradient(closest-side at 80% 30%,rgba(244,114,182,.35),transparent 70%);animation-duration:23s;animation-direction:reverse}
+@keyframes swirl{from{transform:rotate(0deg) scale(1)}to{transform:rotate(360deg) scale(1.15)}}
+.player.paused .aurora{filter:blur(60px) saturate(.3);opacity:.4}
+.stage-poster{position:relative;z-index:2;color:#fff;text-align:center;transition:opacity .3s}
+.stage-poster .big-ico{width:74px;height:74px;border-radius:22px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;margin:0 auto 16px;backdrop-filter:blur(8px)}
+.stage-poster .big-ico svg{width:30px;height:30px;margin-left:3px}
+.stage-poster .st{font-size:17px;font-weight:700;letter-spacing:-.01em}
+.stage-poster .ss{font-family:var(--mono);font-size:12px;color:rgba(255,255,255,.55);margin-top:5px}
+.subtitle{
+  position:absolute;bottom:26px;left:50%;transform:translateX(-50%);z-index:4;
+  background:rgba(4,6,11,.72);color:#fff;font-size:16.5px;font-weight:500;letter-spacing:.01em;
+  padding:6px 18px;border-radius:8px;max-width:80%;text-align:center;
+  opacity:0;transition:opacity .3s;pointer-events:none;
+}
+.subtitle.show{opacity:1}
+.pl-controls{padding:14px 22px 20px;z-index:3;background:linear-gradient(transparent,rgba(4,6,11,.85) 40%)}
+.seek{position:relative;height:5px;border-radius:99px;background:rgba(255,255,255,.16);cursor:pointer;margin-bottom:13px}
+.seek .buf{position:absolute;inset:0;width:36%;background:rgba(255,255,255,.22);border-radius:99px}
+.seek .fill{position:absolute;inset:0;width:0%;background:var(--grad);border-radius:99px}
+.seek .knob{position:absolute;top:50%;width:13px;height:13px;border-radius:99px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.5);transform:translate(-50%,-50%);left:0%}
+.ctl-row{display:flex;align-items:center;gap:6px}
+.ctl-btn{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;color:rgba(255,255,255,.82);transition:all .15s}
+.ctl-btn svg{width:17px;height:17px}
+.ctl-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+.ctl-btn.big{width:46px;height:46px;background:var(--grad);color:#fff}
+.ctl-btn.big:hover{filter:brightness(1.1)}
+.ctl-btn.on{color:var(--cyan)}
+.pl-time{font-family:var(--mono);font-size:12px;color:rgba(255,255,255,.7);margin:0 10px}
+.vol{width:90px;accent-color:var(--cyan);cursor:pointer}
+.pl-spacer{flex:1}
+
+/* ---------- 21. Login ---------- */
+.login{
+  position:fixed;inset:0;z-index:140;display:grid;grid-template-columns:1.1fr 1fr;
+  background:var(--bg);opacity:0;pointer-events:none;transition:opacity .3s;
+}
+.login.open{opacity:1;pointer-events:auto}
+.lg-left{position:relative;overflow:hidden;padding:52px;display:flex;flex-direction:column;background:#0A0F1C}
+html[data-theme="light"] .lg-left{background:#0E1526}
+.lg-mesh{position:absolute;inset:0}
+.lg-mesh::before{content:"";position:absolute;inset:0;background:radial-gradient(700px 500px at 20% 15%,rgba(34,211,238,.2),transparent 60%),radial-gradient(800px 600px at 85% 85%,rgba(124,58,237,.22),transparent 60%)}
+.lg-mesh::after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(148,163,184,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.05) 1px,transparent 1px);background-size:44px 44px}
+.lg-brand{position:relative;display:flex;align-items:center;gap:12px;color:#fff}
+.lg-tag{position:relative;margin-top:auto;color:#fff}
+.lg-tag .t1{font-size:31px;font-weight:800;letter-spacing:-.03em;line-height:1.2}
+.lg-tag .t1 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.lg-tag .t2{font-family:var(--mono);font-size:13px;color:rgba(255,255,255,.55);margin-top:12px}
+.lg-feats{position:relative;display:flex;gap:9px;flex-wrap:wrap;margin-top:22px}
+.lg-feats span{font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.16);border-radius:99px;padding:4px 12px;background:rgba(255,255,255,.05)}
+.lg-right{display:grid;place-items:center;padding:40px}
+.lg-card{width:min(360px,100%)}
+.lg-card h2{font-size:20px;font-weight:700;letter-spacing:-.02em}
+.lg-card .s{font-size:13px;color:var(--t2);margin:6px 0 24px}
+
+/* ---------- 22. Toasts ---------- */
+.toasts{position:fixed;right:20px;bottom:20px;z-index:200;display:flex;flex-direction:column;gap:9px;max-width:380px}
+.toast{
+  display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--line-2);
+  border-radius:12px;padding:12px 15px;box-shadow:var(--shadow-lg);font-size:13px;
+  animation:toastIn .3s cubic-bezier(.3,1.3,.5,1);
+}
+.toast.out{animation:toastOut .25s forwards}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes toastOut{to{opacity:0;transform:translateY(8px) scale(.97)}}
+.toast-ico{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;flex:none}
+.toast-ico svg{width:14px;height:14px}
+.toast .msg{flex:1;min-width:0}
+.toast .act{color:var(--cyan);font-weight:700;font-size:12px;flex:none;padding:4px 8px;border-radius:7px}
+.toast .act:hover{background:var(--grad-soft)}
+.toast .x{color:var(--t3);flex:none;width:24px;height:24px;display:grid;place-items:center;border-radius:6px}
+.toast .x:hover{color:var(--t1);background:var(--line)}
+.toast .x svg{width:13px;height:13px}
+
+/* ---------- 23. Misc ---------- */
+.two-col{display:grid;grid-template-columns:1.9fr 1fr;gap:14px;align-items:start}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.setting-row{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.setting-row:last-child{border-bottom:none}
+.set-main{flex:1;min-width:0}
+.set-t{font-size:13.5px;font-weight:600}
+.set-s{font-size:12px;color:var(--t3);margin-top:2px}
+.danger-card{border-color:rgba(248,113,113,.28)}
+.danger-card .card-t{color:var(--bad)}
+.hr{height:1px;background:var(--line);border:none;margin:16px 0}
+.quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.quick{
+  display:flex;flex-direction:column;gap:9px;padding:14px;border-radius:var(--r-m);
+  border:1px solid var(--line);background:var(--card);transition:all .16s;text-align:left;
+}
+.quick:hover{border-color:rgba(34,211,238,.4);background:var(--card-2);transform:translateY(-1px)}
+.quick .qi{width:32px;height:32px;border-radius:9px;display:grid;place-items:center}
+.quick .qi svg{width:15px;height:15px}
+.quick .qt{font-size:12.5px;font-weight:600}
+.quick .qs{font-size:11px;color:var(--t3)}
+
+/* ---------- 24. Responsive ---------- */
+@media (max-width:1180px){
+  .app{grid-template-columns:70px 1fr}
+  .sidebar{padding:16px 10px;align-items:center}
+  .sb-brand{padding:4px 0 14px;justify-content:center}
+  .sb-brand .sb-text,.sb-label,.nav-sub,.sb-server,.sb-user .u-info,.nav-item span,.nav-badge{display:none}
+  .nav-item{justify-content:center;padding:11px 0}
+  .sb-user{justify-content:center;border:none;padding:8px 0 0;margin-top:6px}
+}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  .sidebar{position:fixed;left:0;top:0;bottom:0;width:264px;z-index:130;transform:translateX(-102%);box-shadow:var(--shadow-lg)}
+  .sidebar.open{transform:none}
+  .sidebar .sb-text,.sidebar .sb-label,.sidebar .nav-sub,.sidebar .sb-server,.sidebar .u-info,.sidebar .nav-item span,.sidebar .nav-badge{display:block}
+  .sidebar .nav-item{justify-content:flex-start;padding:9px 10px}
+  .hamburger{display:grid}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .two-col,.grid-2{grid-template-columns:1fr}
+  .search-pill{width:auto;flex:1}
+  .tb-sub{display:none}
+}
+@media (max-width:640px){
+  .topbar{padding:0 14px;gap:8px}
+  .view{padding:18px 14px 60px}
+  .stats-grid{grid-template-columns:1fr}
+  .quick-grid{grid-template-columns:1fr 1fr}
+  .f-date,.tb-title{display:none}
+  .search-pill{width:38px;padding:0;justify-content:center;flex:none}
+  .search-pill .stxt,.search-pill .kbd{display:none}
+  .f-actions [data-act="rename"]{display:none}
+  .f-meta .cat-lbl{display:none}
+  .login{grid-template-columns:1fr}
+  .lg-left{display:none}
+  .f-actions{opacity:1}
+  .btn .btxt{display:none}
+  .btn-primary,.btn-soft{padding:0 11px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ SVG icon library (Lucide-style, inline) ============ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22D3EE"/><stop offset="1" stop-color="#3B82F6"/>
+    </linearGradient>
+    <linearGradient id="gCpu" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22D3EE" stop-opacity=".30"/><stop offset="1" stop-color="#22D3EE" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="gRam" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#A78BFA" stop-opacity=".30"/><stop offset="1" stop-color="#A78BFA" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="gNet" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#34D399" stop-opacity=".30"/><stop offset="1" stop-color="#34D399" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <symbol id="i-cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></symbol>
+  <symbol id="i-dash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-play-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></symbol>
+  <symbol id="i-yt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17"/><path d="m10 15 5-3-5-3z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18"/><path d="M7 2v20"/><path d="M17 2v20"/><path d="M2 12h20"/><path d="M2 7h5"/><path d="M2 17h5"/><path d="M17 17h5"/><path d="M17 7h5"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></symbol>
+  <symbol id="i-zip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-chev-r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></symbol>
+  <symbol id="i-ram" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="9" rx="1.5"/><path d="M7 16v3"/><path d="M12 16v3"/><path d="M17 16v3"/><path d="M7 11h2"/><path d="M11 11h2"/><path d="M15 11h2"/></symbol>
+  <symbol id="i-disk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/></symbol>
+  <symbol id="i-net" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4v9"/><path d="m4 9 4 4 4-4"/><path d="M16 20v-9"/><path d="m12 15 4-4 4 4"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-command" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-vol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></symbol>
+  <symbol id="i-cc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="14" x="3" y="5" rx="2"/><path d="M7 15h4"/><path d="M15 15h2"/></symbol>
+  <symbol id="i-max" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-paste" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+</svg>
+
+<div class="app">
+  <div class="sb-scrim" id="sbScrim"></div>
+
+  <!-- ============ Sidebar ============ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-brand">
+      <div class="sb-logo"><svg><use href="#i-cloud"/></svg></div>
+      <div class="sb-text">
+        <div class="sb-name">PyCloud</div>
+        <span class="sb-ver">v8.6</span>
+      </div>
+    </div>
+
+    <nav>
+      <button class="nav-item active" data-view="dashboard"><svg><use href="#i-dash"/></svg><span>Overview</span></button>
+      <button class="nav-item" data-view="files"><svg><use href="#i-folder"/></svg><span>Files</span></button>
+      <button class="nav-item" data-view="media"><svg><use href="#i-play-circle"/></svg><span>Media</span></button>
+      <button class="nav-item" data-view="tasks"><svg><use href="#i-list"/></svg><span>Tasks</span><span class="nav-badge" id="navTaskBadge">2</span></button>
+      <button class="nav-item" data-view="settings"><svg><use href="#i-sliders"/></svg><span>Settings</span></button>
+    </nav>
+
+    <div class="sb-label">Library</div>
+    <button class="nav-sub" data-cat="manual"><span class="cat-dot" style="background:var(--cyan)"></span>Manual Uploads</button>
+    <button class="nav-sub" data-cat="youtube"><span class="cat-dot" style="background:var(--pink)"></span>YouTube Library</button>
+    <button class="nav-sub" data-cat="old"><span class="cat-dot" style="background:#94A3B8"></span>Old Root Files</button>
+
+    <div class="sb-server">
+      <div class="row"><span class="dot pulse" style="background:var(--ok)"></span>Server status<span class="val" style="color:var(--ok)">ONLINE</span></div>
+      <div class="row"><svg><use href="#i-server"/></svg>Endpoint<span class="val">192.168.1.100:8080</span></div>
+      <div class="row"><svg><use href="#i-clock"/></svg>Uptime<span class="val" id="sbUptime">14d 06:32</span></div>
+    </div>
+
+    <div class="sb-user">
+      <div class="avatar">A</div>
+      <div class="u-info">
+        <div class="u-name">admin</div>
+        <div class="u-role">root session</div>
+      </div>
+      <button class="icon-btn" id="logoutBtn" title="Sign out" style="margin-left:auto"><svg><use href="#i-logout"/></svg></button>
+    </div>
+  </aside>
+
+  <!-- ============ Main ============ -->
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn hamburger" id="hamburger"><svg><use href="#i-menu"/></svg></button>
+      <div>
+        <div class="tb-title" id="tbTitle">Overview</div>
+        <div class="tb-sub" id="tbSub">live system status</div>
+      </div>
+      <div class="tb-actions">
+        <button class="search-pill" id="searchPill">
+          <svg><use href="#i-search"/></svg>
+          <span class="stxt">Search files and actions</span>
+          <span class="kbd">Ctrl K</span>
+        </button>
+        <button class="icon-btn bordered" id="themeToggle" title="Toggle theme"><svg><use href="#i-sun"/></svg></button>
+        <button class="btn btn-soft" id="uploadBtn"><svg><use href="#i-upload"/></svg><span class="btxt">Upload</span></button>
+        <button class="btn btn-primary" id="fetchBtn"><svg><use href="#i-yt"/></svg><span class="btxt">New Download</span></button>
+      </div>
+    </header>
+
+    <main>
+
+      <!-- ============ View: Dashboard ============ -->
+      <section class="view active" id="view-dashboard">
+        <div class="page-head">
+          <div>
+            <h1 id="greet">Good evening, admin</h1>
+            <div class="sub" style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap">
+              <span class="dot pulse" style="background:var(--ok)"></span>
+              <span>All systems operational</span>
+              <span class="tag">Python 3.11</span>
+              <span class="tag">ffmpeg 6.1.1</span>
+              <span class="tag">Linux x86_64</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="card stat">
+            <div class="stat-top">
+              <div class="stat-ico" style="background:var(--grad-soft);color:var(--cyan)"><svg><use href="#i-cpu"/></svg></div>
+              <div class="stat-label">CPU</div>
+            </div>
+            <div class="stat-val"><span id="cpuVal">68.3</span><span class="unit">%</span></div>
+            <svg class="spark" id="cpuSpark" viewBox="0 0 200 52" preserveAspectRatio="none">
+              <path id="cpuArea" fill="url(#gCpu)"/>
+              <path class="sp-line" id="cpuLine" stroke="#22D3EE"/>
+            </svg>
+            <div class="stat-foot">8 cores · 3.60 GHz <span class="stat-up" style="margin-left:auto"><span class="dot pulse" style="background:var(--ok)"></span>live</span></div>
+          </div>
+
+          <div class="card stat">
+            <div class="stat-top">
+              <div class="stat-ico" style="background:var(--vio-bg);color:var(--vio)"><svg><use href="#i-ram"/></svg></div>
+              <div class="stat-label">Memory</div>
+            </div>
+            <div class="stat-val"><span id="ramVal">83.8</span><span class="unit">%</span></div>
+            <svg class="spark" id="ramSpark" viewBox="0 0 200 52" preserveAspectRatio="none">
+              <path id="ramArea" fill="url(#gRam)"/>
+              <path class="sp-line" id="ramLine" stroke="#A78BFA"/>
+            </svg>
+            <div class="stat-foot"><span id="ramUsed">13.4</span> / 16.0 GB used</div>
+          </div>
+
+          <div class="card stat" style="display:flex;gap:16px;align-items:center">
+            <div class="ring-wrap">
+              <svg class="ring" viewBox="0 0 120 120">
+                <circle class="ring-bg" cx="60" cy="60" r="52"/>
+                <circle class="ring-val" id="diskRing" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="115"/>
+              </svg>
+              <div class="ring-center"><div><div class="rv"><span id="diskVal">64.7</span>%</div><div class="rl">used</div></div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:9px;min-width:0">
+              <div class="stat-top"><div class="stat-ico" style="background:var(--amber-bg);color:var(--amber)"><svg><use href="#i-disk"/></svg></div><div class="stat-label">Disk /root</div></div>
+              <div class="stat-foot" style="flex-direction:column;align-items:flex-start;gap:5px;margin-top:0">
+                <span>used · <b style="color:var(--t1)">662.3 GB</b></span>
+                <span>free · <b style="color:var(--ok)">361.7 GB</b></span>
+                <span>total · 1.0 TB</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card stat">
+            <div class="stat-top">
+              <div class="stat-ico" style="background:var(--ok-bg);color:var(--ok)"><svg><use href="#i-net"/></svg></div>
+              <div class="stat-label">Network</div>
+            </div>
+            <div class="stat-val"><span id="netVal">4.2</span><span class="unit">MB/s</span></div>
+            <svg class="spark" id="netSpark" viewBox="0 0 200 52" preserveAspectRatio="none">
+              <path id="netArea" fill="url(#gNet)"/>
+              <path class="sp-line" id="netLine" stroke="#34D399"/>
+            </svg>
+            <div class="stat-foot">down · active <span style="margin-left:auto">up 0.3 MB/s</span></div>
+          </div>
+        </div>
+
+        <div class="two-col" style="margin-bottom:14px">
+          <div class="card">
+            <div class="card-h">
+              <div class="card-t"><svg><use href="#i-zap"/></svg>Background Tasks</div>
+              <button class="link" data-goto="tasks">View all <svg><use href="#i-chev-r"/></svg></button>
+            </div>
+            <div id="dashTasks"></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><div class="card-t"><svg><use href="#i-folder"/></svg>Storage</div></div>
+            <div class="card-b">
+              <div class="donut-wrap">
+                <div class="donut">
+                  <svg viewBox="0 0 150 150" id="donutSvg"></svg>
+                  <div class="donut-center"><div><div class="dv" id="donutTotal">4.0 GB</div><div class="dl">library</div></div></div>
+                </div>
+                <div class="legend" id="donutLegend"></div>
+              </div>
+              <div class="stat-foot" style="margin-top:16px;justify-content:center">
+                <svg style="width:12px;height:12px;color:var(--cyan)"><use href="#i-check"/></svg>
+                auto-categorization enabled
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="quick-grid" style="margin-bottom:14px">
+          <button class="quick" id="qFetch">
+            <span class="qi" style="background:var(--pink-bg);color:var(--pink)"><svg><use href="#i-yt"/></svg></span>
+            <span><span class="qt">Fetch from YouTube</span><br><span class="qs">yt-dlp · video or audio</span></span>
+          </button>
+          <button class="quick" id="qUpload">
+            <span class="qi" style="background:var(--grad-soft);color:var(--cyan)"><svg><use href="#i-upload"/></svg></span>
+            <span><span class="qt">Upload files</span><br><span class="qs">drag &amp; drop with progress</span></span>
+          </button>
+          <button class="quick" data-goto="media">
+            <span class="qi" style="background:var(--vio-bg);color:var(--vio)"><svg><use href="#i-play-circle"/></svg></span>
+            <span><span class="qt">Open media center</span><br><span class="qs">cinema mode · subtitles</span></span>
+          </button>
+          <button class="quick" data-goto="tasks">
+            <span class="qi" style="background:var(--amber-bg);color:var(--amber)"><svg><use href="#i-terminal"/></svg></span>
+            <span><span class="qt">Task console</span><br><span class="qs">live logs · cancel / retry</span></span>
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="card-h">
+            <div class="card-t"><svg><use href="#i-clock"/></svg>Recent files</div>
+            <button class="link" data-goto="files">Open Files <svg><use href="#i-chev-r"/></svg></button>
+          </div>
+          <table class="mini-table"><tbody id="recentTable"></tbody></table>
+        </div>
+      </section>
+
+      <!-- ============ View: Files ============ -->
+      <section class="view" id="view-files">
+        <div class="page-head">
+          <div>
+            <h1>Files</h1>
+            <div class="sub" id="filesSub" style="margin-top:5px">14 items · 4.0 GB total</div>
+          </div>
+          <div class="right">
+            <select class="select" id="fileSort" style="width:150px">
+              <option value="recent">Sort: Recent</option>
+              <option value="name">Sort: Name</option>
+              <option value="size">Sort: Largest</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="files-toolbar">
+          <div class="input-wrap">
+            <svg><use href="#i-search"/></svg>
+            <input class="input" id="fileSearch" placeholder="Filter files — instant, client-side" autocomplete="off">
+          </div>
+          <div class="chips" id="catChips">
+            <button class="chip active" data-cat="all">All <span class="n" id="nAll">14</span></button>
+            <button class="chip" data-cat="manual"><span class="cat-dot" style="background:var(--cyan)"></span>Manual <span class="n" id="nManual">7</span></button>
+            <button class="chip" data-cat="youtube"><span class="cat-dot" style="background:var(--pink)"></span>YouTube <span class="n" id="nYoutube">4</span></button>
+            <button class="chip" data-cat="old"><span class="cat-dot" style="background:#94A3B8"></span>Old Root <span class="n" id="nOld">3</span></button>
+          </div>
+        </div>
+
+        <div class="dropzone" id="dropzone" tabindex="0">
+          <div class="dz-ico"><svg><use href="#i-upload"/></svg></div>
+          <div style="flex:1;min-width:0">
+            <div class="dz-t">Drag &amp; drop files here — or <span style="color:var(--cyan);font-weight:700">browse</span></div>
+            <div class="dz-s">Files over 400 MB automatically switch to download mode · ffmpeg ready</div>
+            <div class="dz-progress hidden" id="dzProg" style="margin-top:10px">
+              <div style="display:flex;justify-content:space-between;font-size:11.5px;font-family:var(--mono);margin-bottom:6px">
+                <span id="dzName" style="color:var(--t2)">file.zip</span>
+                <span id="dzPct" style="color:var(--cyan)">0%</span>
+              </div>
+              <div class="progress"><div class="progress-fill shimmer" id="dzBar" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div>
+        <input type="file" id="fileInput" multiple style="display:none">
+
+        <div id="fileSections"></div>
+      </section>
+
+      <!-- ============ View: Media ============ -->
+      <section class="view" id="view-media">
+        <div class="page-head">
+          <div>
+            <h1>Media Center</h1>
+            <div class="sub" style="margin-top:5px">7 videos · 1 audio track · smart subtitles (.vtt auto-load)</div>
+          </div>
+          <div class="right">
+            <button class="btn btn-soft btn-sm" id="clearWatched"><svg><use href="#i-check"/></svg>Mark all watched</button>
+          </div>
+        </div>
+
+        <div class="media-hero" id="mediaHero">
+          <div class="mh-bg"></div>
+          <div class="mh-fade"></div>
+          <div class="mh-play"><svg><use href="#i-play"/></svg></div>
+          <div class="mh-info">
+            <div style="flex:1;min-width:0">
+              <div class="mh-title">Lord of Mysteries — E13</div>
+              <div class="mh-sub">MP4 · 720p · 372.1 MB · resumed at 62%</div>
+            </div>
+            <span class="badge b-run">Continue watching</span>
+          </div>
+          <div class="mh-progress"><div class="fill"></div></div>
+        </div>
+
+        <div class="card audio-card" style="margin-bottom:20px">
+          <div class="eq" id="audioEq"><span></span><span></span><span></span><span></span></div>
+          <div style="flex:1;min-width:0">
+            <div class="task-name" style="font-size:13.5px">SpotiDown.App — Saiyaara</div>
+            <div class="task-meta">MP3 · 5.8 MB · 4:36 · <span style="color:var(--ok)">now playing</span></div>
+          </div>
+          <span class="tag">AUDIO</span>
+          <button class="icon-btn bordered" id="audioPlayBtn" title="Play"><svg><use href="#i-play"/></svg></button>
+        </div>
+
+        <div class="sb-label" style="padding-left:4px">YouTube Library</div>
+        <div class="media-grid" id="mediaGrid" style="margin-top:10px"></div>
+
+        <div class="sb-label" style="padding-left:4px;margin-top:24px">Manual Uploads</div>
+        <div class="media-grid" id="mediaGridManual" style="margin-top:10px"></div>
+      </section>
+
+      <!-- ============ View: Tasks ============ -->
+      <section class="view" id="view-tasks">
+        <div class="page-head">
+          <div>
+            <h1>Background Tasks</h1>
+            <div class="sub" style="margin-top:5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              Sequential queue · powered by <span class="tag">yt-dlp</span>
+              <span class="tag">async — server never freezes</span>
+            </div>
+          </div>
+          <div class="right">
+            <button class="btn btn-soft btn-sm" id="clearDone"><svg><use href="#i-check"/></svg>Clear completed</button>
+          </div>
+        </div>
+        <div class="card" id="tasksCard"><div id="tasksList"></div></div>
+
+        <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-top:14px">
+          <div class="card stat">
+            <div class="stat-top"><div class="stat-ico" style="background:var(--ok-bg);color:var(--ok)"><svg><use href="#i-check"/></svg></div><div class="stat-label">Downloaded</div></div>
+            <div class="stat-val">2.7<span class="unit">GB</span></div>
+            <div class="stat-foot">this week · 2 tasks completed</div>
+          </div>
+          <div class="card stat">
+            <div class="stat-top"><div class="stat-ico" style="background:var(--grad-soft);color:var(--cyan)"><svg><use href="#i-net"/></svg></div><div class="stat-label">Throughput</div></div>
+            <div class="stat-val">3.1<span class="unit">MB/s</span></div>
+            <div class="stat-foot">live average · down</div>
+          </div>
+          <div class="card stat">
+            <div class="stat-top"><div class="stat-ico" style="background:var(--amber-bg);color:var(--amber)"><svg><use href="#i-zap"/></svg></div><div class="stat-label">Queue policy</div></div>
+            <div class="stat-val" style="font-size:19px">Sequential</div>
+            <div class="stat-foot">one yt-dlp job at a time</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ View: Settings ============ -->
+      <section class="view" id="view-settings">
+        <div class="page-head">
+          <div>
+            <h1>Settings</h1>
+            <div class="sub" style="margin-top:5px">Runtime configuration of secure_server.py</div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:14px">
+          <div class="card">
+            <div class="card-h"><div class="card-t"><svg><use href="#i-server"/></svg>Server</div><span class="tag" style="margin-left:auto">RUNNING</span></div>
+            <div>
+              <div class="setting-row"><div class="set-main"><div class="set-t">Port</div><div class="set-s">HTTP listen port</div></div><span class="mono" style="color:var(--t2)">8080</span></div>
+              <div class="setting-row"><div class="set-main"><div class="set-t">Root directory</div><div class="set-s">All library categories live under this path</div></div><span class="mono" style="color:var(--t2)">/home/admin/cloud</span></div>
+              <div class="setting-row"><div class="set-main"><div class="set-t">Platform</div><div class="set-s">Python 3.11.2 · Linux x86_64 · VPS</div></div><span class="mono" style="color:var(--t2)">linux</span></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-h"><div class="card-t"><svg><use href="#i-shield"/></svg>Authentication</div><span class="tag" style="margin-left:auto">BASIC AUTH</span></div>
+            <div>
+              <div class="setting-row"><div class="set-main"><div class="set-t">Username</div></div><span class="mono" style="color:var(--t2)">admin</span></div>
+              <div class="setting-row"><div class="set-main"><div class="set-t">Password</div><div class="set-s">Stored in script config — change the default</div></div><span class="mono" style="color:var(--t2)">••••••••••</span></div>
+              <div class="setting-row"><div class="set-main"><div class="set-t">Session</div><div class="set-s">Stays on your server. No third parties.</div></div><button class="btn btn-soft btn-sm">Change</button></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:14px">
+          <div class="card">
+            <div class="card-h"><div class="card-t"><svg><use href="#i-sliders"/></svg>Behavior</div></div>
+            <div>
+              <div class="setting-row"><div class="set-main"><div class="set-t">Hide system files</div><div class="set-s">Files starting with a dot are never listed</div></div><label class="switch"><input type="checkbox" checked><span class="track"></span><span class="thumb"></span></label></div>
+              <div class="setting-row"><div class="set-main"><div class="set-t">Confirm nuclear delete</div><div class="set-s">Ask before running shutil.rmtree on folders</div></div><label class="switch"><input type="checkbox" checked><span class="track"></span><span class="thumb"></span></label></div>
+              <div class="setting-row"><div class="set-main"><div class="set-t">Auto-categorize uploads</div><div class="set-s">Manual Uploads · YouTube Library · Old Root Files</div></div><label class="switch"><input type="checkbox" checked><span class="track"></span><span class="thumb"></span></label></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-h"><div class="card-t"><svg><use href="#i-zap"/></svg>Integrations</div></div>
+            <div>
+              <div class="setting-row"><div class="set-main"><div class="set-t">yt-dlp</div><div class="set-s">YouTube and social media downloader</div></div><span class="badge b-done"><svg><use href="#i-check"/></svg>2026.10.22</span></div>
+              <div class="setting-row"><div class="set-main"><div class="set-t">ffmpeg</div><div class="set-s">Merges YouTube audio + video streams</div></div><span class="badge b-done"><svg><use href="#i-check"/></svg>6.1.1</span></div>
+              <div class="setting-row"><div class="set-main"><div class="set-t">Download queue</div><div class="set-s">One yt-dlp job at a time — sequential</div></div><span class="tag">SEQUENTIAL</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card danger-card">
+          <div class="card-h"><div class="card-t"><svg><use href="#i-alert"/></svg>Danger zone</div></div>
+          <div class="card-b" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+            <div style="flex:1;min-width:220px">
+              <div class="set-t">Stop server</div>
+              <div class="set-s">Equivalent to <span class="mono">pkill -f secure_server.py</span> — active downloads will be cancelled.</div>
+            </div>
+            <button class="btn btn-danger" id="stopServer"><svg><use href="#i-x"/></svg>Stop server</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ============ Overlay: Fetch Video ============ -->
+<div class="overlay" id="fetchModal">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-h">
+      <div class="modal-ico" style="background:var(--pink-bg);color:var(--pink)"><svg><use href="#i-yt"/></svg></div>
+      <div><div class="modal-t">Fetch Video</div><div class="modal-s">yt-dlp downloads straight to your server</div></div>
+      <button class="icon-btn" data-close style="margin-left:auto"><svg><use href="#i-x"/></svg></button>
+    </div>
+    <div class="modal-b">
+      <label class="f-label">YouTube URL</label>
+      <div class="input-wrap">
+        <svg><use href="#i-yt"/></svg>
+        <input class="input" id="fetchUrl" placeholder="https://youtu.be/..." autocomplete="off" spellcheck="false">
+        <span class="in-right"><button class="btn btn-soft btn-sm" id="pasteBtn"><svg><use href="#i-paste"/></svg>Paste</button></span>
+      </div>
+      <div class="field-gap">
+        <label class="f-label">Format</label>
+        <div class="segmented" id="fmtSeg">
+          <button class="seg-btn active" data-fmt="mp4"><svg><use href="#i-film"/></svg>Video · MP4</button>
+          <button class="seg-btn" data-fmt="mp3"><svg><use href="#i-music"/></svg>Audio · MP3</button>
+        </div>
+      </div>
+      <div class="field-gap" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label class="f-label">Quality</label>
+          <select class="select" id="fetchQuality">
+            <option>Best available</option><option>2160p · 4K</option><option>1440p</option><option selected>1080p</option><option>720p</option>
+          </select>
+        </div>
+        <div>
+          <label class="f-label">Save to</label>
+          <select class="select" id="fetchDest"><option>YouTube Library</option><option>Manual Uploads</option></select>
+        </div>
+      </div>
+      <div class="stat-foot" style="margin-top:16px;justify-content:flex-start">
+        <svg style="width:12px;height:12px;color:var(--ok)"><use href="#i-check"/></svg>
+        ffmpeg merges audio + video automatically · task runs in background queue
+      </div>
+    </div>
+    <div class="modal-f">
+      <button class="btn btn-ghost" data-close>Cancel</button>
+      <button class="btn btn-primary" id="fetchSubmit"><svg><use href="#i-download"/></svg>Download to Server</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Overlay: Confirm (nuclear delete) ============ -->
+<div class="overlay" id="confirmModal">
+  <div class="modal" style="width:min(430px,100%)" role="dialog" aria-modal="true">
+    <div class="modal-h">
+      <div class="modal-ico"><svg><use href="#i-alert"/></svg></div>
+      <div><div class="modal-t" id="cfTitle">Delete folder?</div><div class="modal-s" id="cfSub">This cannot be undone</div></div>
+    </div>
+    <div class="modal-b">
+      <div class="set-s" id="cfMsg" style="font-size:13px;line-height:1.6">Are you sure?</div>
+      <div class="stat-foot" style="margin-top:12px;justify-content:flex-start;color:var(--bad)">
+        <svg style="width:12px;height:12px"><use href="#i-alert"/></svg>
+        runs shutil.rmtree — immediate and irreversible
+      </div>
+    </div>
+    <div class="modal-f">
+      <button class="btn btn-ghost" data-close>Cancel</button>
+      <button class="btn btn-danger" id="cfOk"><svg><use href="#i-trash"/></svg>Delete permanently</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Overlay: Command palette ============ -->
+<div class="overlay" id="palette">
+  <div class="modal palette" role="dialog" aria-modal="true">
+    <div class="pal-input-wrap">
+      <svg><use href="#i-search"/></svg>
+      <input class="pal-input" id="palInput" placeholder="Type a command or search files..." autocomplete="off" spellcheck="false">
+      <span class="kbd">esc</span>
+    </div>
+    <div class="pal-list" id="palList"></div>
+    <div class="pal-foot">
+      <span><span class="kbd">↑↓</span>navigate</span>
+      <span><span class="kbd">↵</span>select</span>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:6px"><svg style="width:12px;height:12px"><use href="#i-command"/></svg>PyCloud quick actions</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Overlay: Cinema player ============ -->
+<div class="player" id="player">
+  <div class="pl-top">
+    <span class="pl-badge" id="plBadge">CINEMA</span>
+    <div class="pl-title" id="plTitle">Lord of Mysteries — E13</div>
+    <span class="pl-badge" id="plFmt" style="color:rgba(255,255,255,.6);background:rgba(255,255,255,.1)">MP4 · 720p</span>
+    <button class="icon-btn pl-close" id="plClose" style="color:rgba(255,255,255,.8)"><svg><use href="#i-x"/></svg></button>
+  </div>
+  <div class="pl-stage" id="plStage">
+    <div class="aurora"></div>
+    <div class="stage-poster" id="plPoster">
+      <div class="big-ico"><svg id="plPosterIco"><use href="#i-film"/></svg></div>
+      <div class="st" id="plPosterT">Lord of Mysteries — E13</div>
+      <div class="ss" id="plPosterS">MP4 · 372.1 MB · streaming from your server</div>
+    </div>
+    <div class="subtitle" id="plSub">[ Demo subtitle — drop a .vtt next to the video and it auto-loads ]</div>
+  </div>
+  <div class="pl-controls">
+    <div class="seek" id="plSeek">
+      <div class="buf"></div>
+      <div class="fill" id="plFill"></div>
+      <div class="knob" id="plKnob"></div>
+    </div>
+    <div class="ctl-row">
+      <button class="ctl-btn big" id="plPlay"><svg id="plPlayIco"><use href="#i-pause"/></svg></button>
+      <button class="ctl-btn" title="Rewind 10s" id="plBack"><svg><use href="#i-retry"/></svg></button>
+      <span class="pl-time"><span id="plCur">00:00</span> / <span id="plDur">24:12</span></span>
+      <svg class="pl-time" style="width:14px;height:14px;margin:0"><use href="#i-vol"/></svg>
+      <input type="range" class="vol" min="0" max="100" value="80" id="plVol">
+      <div class="pl-spacer"></div>
+      <button class="ctl-btn" id="plCC" title="Smart subtitles (.vtt)"><svg><use href="#i-cc"/></svg></button>
+      <button class="ctl-btn" id="plFull" title="Fullscreen"><svg><use href="#i-max"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Overlay: Login ============ -->
+<div class="login" id="login">
+  <div class="lg-left">
+    <div class="lg-mesh"></div>
+    <div class="lg-brand">
+      <div class="sb-logo"><svg><use href="#i-cloud"/></svg></div>
+      <div><div style="font-size:17px;font-weight:700">PyCloud</div><div class="mono" style="font-size:10.5px;color:rgba(255,255,255,.5)">v8.6 · self-hosted</div></div>
+    </div>
+    <div class="lg-tag">
+      <div class="t1">Your files.<br>Your server.<br><em>Your control.</em></div>
+      <div class="t2">A private cloud, file manager, media center and background task engine — one Python process, zero frameworks.</div>
+      <div class="lg-feats"><span>Minimal. Fast. System-Level.</span><span>yt-dlp</span><span>ffmpeg</span><span>Raspberry Pi ready</span></div>
+    </div>
+  </div>
+  <div class="lg-right">
+    <div class="lg-card">
+      <h2>Sign in to PyCloud</h2>
+      <div class="s">Basic authentication — your session never leaves this machine.</div>
+      <form id="loginForm">
+        <label class="f-label">Username</label>
+        <div class="input-wrap"><svg><use href="#i-user"/></svg><input class="input" id="loginUser" value="admin" autocomplete="username"></div>
+        <div class="field-gap">
+          <label class="f-label">Password</label>
+          <div class="input-wrap"><svg><use href="#i-lock"/></svg><input class="input" type="password" id="loginPass" value="demo-session" autocomplete="current-password"></div>
+        </div>
+        <button class="btn btn-primary btn-block" style="margin-top:22px;height:42px" type="submit"><svg><use href="#i-shield"/></svg>Sign in</button>
+        <div class="stat-foot" style="justify-content:center;margin-top:16px">
+          <svg style="width:12px;height:12px;color:var(--ok)"><use href="#i-check"/></svg>
+          demo — any credentials work
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Toasts ============ -->
+<div class="toasts" id="toasts"></div>
+
+<script>
+'use strict';
+/* ============================================================
+   PyCloud redesign — demo engine (vanilla JS, zero deps).
+   In production these functions map to secure_server.py endpoints:
+   renderStats()  <-  GET /api/stats      renderTasks() <- GET /api/tasks
+   addFiles()     <-  POST /api/upload    fetchSubmit() <- POST /api/download
+   ============================================================ */
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function fmtBytes(b){
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  if (b < 1073741824) return (b/1048576).toFixed(1) + ' MB';
+  return (b/1073741824).toFixed(1) + ' GB';
+}
+const CATS = {
+  manual:  { label:'Manual Uploads',  short:'MANUAL',   color:'#22D3EE' },
+  youtube: { label:'YouTube Library', short:'YOUTUBE',  color:'#F472B6' },
+  old:     { label:'Old Root Files',  short:'OLD ROOT', color:'#94A3B8' }
+};
+const TYPES = {
+  video:{icon:'film',cls:'t-video'}, audio:{icon:'music',cls:'t-audio'},
+  image:{icon:'image',cls:'t-image'}, archive:{icon:'zip',cls:'t-archive'},
+  text:{icon:'file',cls:'t-text'},   folder:{icon:'folder',cls:'t-folder'}
+};
+
+/* ---------------- data ---------------- */
+let fid = 0;
+const files = [
+  { id:++fid, name:'Screenshot_20260111_105440.jpg', cat:'manual', size:262246,    date:'Nov 21, 11:02', type:'image' },
+  { id:++fid, name:'Screenshot_20260111_105512.jpg', cat:'manual', size:319897,    date:'Nov 21, 10:59', type:'image' },
+  { id:++fid, name:'Samurai_Warrior_4K_Wallpaper.webm', cat:'manual', size:22963815, date:'Nov 20, 22:41', type:'video', dur:'0:24' },
+  { id:++fid, name:'Lord_of_Mysteries-E13-720p.mp4', cat:'manual', size:390177689, date:'Nov 19, 21:15', type:'video', dur:'24:12' },
+  { id:++fid, name:'argon-design-system-react-master.zip', cat:'manual', size:589107, date:'Nov 18, 09:33', type:'archive' },
+  { id:++fid, name:'SpotiDown.App - Saiyaara.mp3', cat:'manual', size:6081740,    date:'Nov 15, 19:20', type:'audio', dur:'4:36' },
+  { id:++fid, name:'AIZEN_4K_Wallpaper.webm', cat:'manual', size:32296140,     date:'Nov 14, 12:05', type:'video', dur:'0:18' },
+  { id:++fid, name:'Stranger_Things_S05E08_1080p.webm', cat:'youtube', size:2899102720, date:'Nov 20, 23:58', type:'video', dur:'1:08:42' },
+  { id:++fid, name:'lofi_study_beats_2026.webm', cat:'youtube', size:88281088,   date:'Nov 12, 08:30', type:'video', dur:'3:02:11' },
+  { id:++fid, name:'python_full_course_2026.webm', cat:'youtube', size:537654784, date:'Nov 10, 17:44', type:'video', dur:'6:44:20' },
+  { id:++fid, name:'synthwave_radio_24_7.webm', cat:'youtube', size:163737600,   date:'Nov 8, 20:00',  type:'video', dur:'LIVE' },
+  { id:++fid, name:'old_downloads', cat:'old', size:0, items:12, date:'Nov 2, 16:12',  type:'folder' },
+  { id:++fid, name:'old_wallpaper_pack.zip', cat:'old', size:156114124, date:'Oct 28, 11:20', type:'archive' },
+  { id:++fid, name:'test.txt', cat:'old', size:38, date:'Oct 20, 09:45', type:'text' }
+];
+
+const ytLogDone = [
+'[youtube] Extracting URL: https://youtu.be/rWvfyzX2OeM',
+'[youtube] rWvfyzX2OeM: Downloading webpage',
+'[youtube] rWvfyzX2OeM: Downloading android player API JSON',
+'[info] rWvfyzX2OeM: Downloading 1 format(s): 137+251',
+'[download] Destination: Samurai_Warrior_4K_Wallpaper.webm',
+'[download] 100% of 21.90MiB in 00:04',
+'[Merger] Merging formats into "Samurai_Warrior_4K_Wallpaper.webm"'];
+const ytLogRun = [
+'[youtube] Extracting URL: https://youtu.be/xK7m9vQ2aB4',
+'[youtube] xK7m9vQ2aB4: Downloading webpage',
+'[info] xK7m9vQ2aB4: Downloading 1 format(s): 137+140',
+'[download] Destination: Interstellar_Official_Trailer_4K.webm',
+'[download] 47.3% of 84.20MiB at 3.12MiB/s ETA 00:14'];
+
+let tidCounter = 1;
+function mkTask(o){ return Object.assign({ id:('t'+Date.now().toString(36)+(tidCounter++)).slice(0,8), progress:0, speed:3.1, logsOpen:false }, o); }
+let tasks = [
+  mkTask({ name:'Samurai Warrior 4K Wallpaper', url:'https://youtu.be/rWvfyzX2OeM', status:'done', size:22963815, logs:ytLogDone }),
+  mkTask({ name:'Interstellar — Official Trailer 4K', url:'https://youtu.be/xK7m9vQ2aB4', status:'run', progress:47, size:88281088, logs:ytLogRun }),
+  mkTask({ name:'Lord of Mysteries — E14', url:'https://youtu.be/kQ9LpJ7fX2c', status:'queue', size:398458880, logs:[] })
+];
+
+const state = { view:'dashboard', cat:'all', q:'', sort:'recent' };
+
+/* ---------------- toast ---------------- */
+function toast(msg, opts = {}){
+  const { type='ok', action=null } = opts;
+  const ico = { ok:'check', info:'info', bad:'alert' }[type];
+  const cls = { ok:'b-done', info:'b-run', bad:'b-cancel' }[type];
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<span class="badge ${cls}" style="border-radius:8px;padding:5px"><svg><use href="#i-${ico}"/></svg></span>
+    <span class="msg">${esc(msg)}</span>
+    ${action ? `<button class="act">${esc(action.label)}</button>` : ''}
+    <button class="x"><svg><use href="#i-x"/></svg></button>`;
+  $('#toasts').appendChild(el);
+  const kill = () => { el.classList.add('out'); setTimeout(() => el.remove(), 260); };
+  el.querySelector('.x').onclick = kill;
+  if (action) el.querySelector('.act').onclick = () => { action.run(); kill(); };
+  setTimeout(kill, action ? 8000 : 4200);
+}
+
+/* ---------------- files ---------------- */
+const isMedia = f => f.type === 'video' || f.type === 'audio';
+const totalBytes = () => files.reduce((a, f) => a + f.size, 0);
+
+function updateCounts(){
+  const c = { all:files.length, manual:0, youtube:0, old:0 };
+  files.forEach(f => c[f.cat]++);
+  $('#nAll').textContent = c.all; $('#nManual').textContent = c.manual;
+  $('#nYoutube').textContent = c.youtube; $('#nOld').textContent = c.old;
+  $('#filesSub').textContent = `${c.all} items · ${fmtBytes(totalBytes())} total`;
+}
+
+function fileRow(f){
+  const m = TYPES[f.type];
+  const media = isMedia(f);
+  return `<div class="file-row" data-id="${f.id}">
+    <div class="f-ico ${m.cls}"><svg><use href="#i-${m.icon}"/></svg></div>
+    <div class="f-main">
+      <div class="f-name"><span class="nm" title="${esc(f.name)}">${esc(f.name)}</span>
+        ${f.dur ? `<span class="dur">${f.dur}</span>` : ''}
+        ${f.items ? `<span class="dur">${f.items} items</span>` : ''}
+      </div>
+      <div class="f-meta">
+        <span style="display:flex;align-items:center;gap:6px"><span class="dot" style="background:${CATS[f.cat].color}"></span><span class="cat-lbl">${CATS[f.cat].label}</span></span>
+        <span>${f.date}</span>
+        ${f.size > 419430400 ? '<span style="color:var(--warn)">download mode</span>' : ''}
+      </div>
+    </div>
+    <span class="f-size">${fmtBytes(f.size)}</span>
+    <span class="f-date">${f.date}</span>
+    <div class="f-actions">
+      ${media ? '<button class="f-btn play" data-act="play" title="Play"><svg><use href="#i-play"/></svg></button>' : ''}
+      <button class="f-btn" data-act="rename" title="Rename"><svg><use href="#i-pencil"/></svg></button>
+      <button class="f-btn danger" data-act="del" title="Delete"><svg><use href="#i-trash"/></svg></button>
+    </div>
+  </div>`;
+}
+
+function renderFiles(){
+  const q = state.q.toLowerCase();
+  let list = files.filter(f =>
+    (state.cat === 'all' || f.cat === state.cat) &&
+    (!q || f.name.toLowerCase().includes(q)));
+  if (state.sort === 'name') list = [...list].sort((a, b) => a.name.localeCompare(b.name));
+  if (state.sort === 'size') list = [...list].sort((a, b) => b.size - a.size);
+
+  const host = $('#fileSections');
+  if (!list.length){
+    host.innerHTML = `<div class="card empty"><svg><use href="#i-search"/></svg>
+      <div class="t">No files match "${esc(state.q)}"</div>
+      <div class="s">Try a different search or category filter</div></div>`;
+    return;
+  }
+  let html = '';
+  ['manual','youtube','old'].forEach(cat => {
+    const rows = list.filter(f => f.cat === cat);
+    if (!rows.length) return;
+    html += `<div class="file-section">
+      <div class="fs-head"><span class="cat-dot" style="background:${CATS[cat].color}"></span>
+        <span class="fs-title">${CATS[cat].label}</span><span class="fs-count">${rows.length}</span></div>
+      <div class="file-list">${rows.map(fileRow).join('')}</div>
+    </div>`;
+  });
+  host.innerHTML = html;
+}
+
+function renderRecent(){
+  const rows = files.slice(0, 5).map(f => {
+    const m = TYPES[f.type];
+    return `<tr><td style="width:44px"><div class="f-ico ${m.cls}"><svg><use href="#i-${m.icon}"/></svg></div></td>
+      <td><div class="nm" title="${esc(f.name)}">${esc(f.name)}</div></td>
+      <td><span class="tag">${CATS[f.cat].short}</span></td>
+      <td class="sz">${fmtBytes(f.size)}</td><td class="dt">${f.date}</td></tr>`;
+  }).join('');
+  $('#recentTable').innerHTML = rows;
+}
+
+/* ---------------- media ---------------- */
+const THUMBS = [
+  'linear-gradient(135deg,#312E81,#7C3AED)','linear-gradient(135deg,#0E7490,#22D3EE)',
+  'linear-gradient(135deg,#9D174D,#F472B6)','linear-gradient(135deg,#7C2D12,#FBBF24)',
+  'linear-gradient(135deg,#1E3A8A,#3B82F6)','linear-gradient(135deg,#14532D,#34D399)'
+];
+function mediaCard(f, i){
+  return `<div class="m-card" data-id="${f.id}">
+    <div class="m-thumb"><div class="grad" style="background:${THUMBS[i % THUMBS.length]}"></div>
+      <div class="p-overlay"><svg><use href="#i-play"/></svg></div>
+      ${f.dur ? `<span class="m-dur">${f.dur}</span>` : ''}</div>
+    <div class="m-body"><div class="m-name" title="${esc(f.name)}">${esc(f.name)}</div>
+      <div class="m-sub">${fmtBytes(f.size)} · ${f.date}</div></div>
+  </div>`;
+}
+function renderMedia(){
+  const yt = files.filter(f => f.cat === 'youtube' && f.type === 'video');
+  const mn = files.filter(f => f.cat === 'manual' && (f.type === 'video' || f.type === 'image'));
+  $('#mediaGrid').innerHTML = yt.map(mediaCard).join('');
+  $('#mediaGridManual').innerHTML = mn.map(mediaCard).join('');
+}
+
+/* ---------------- tasks ---------------- */
+const TASK_META = {
+  done:   { badge:'b-done',   label:'COMPLETED', ico:'check',   bg:'var(--ok-bg)',    fg:'var(--ok)' },
+  run:    { badge:'b-run',    label:'DOWNLOADING',ico:'download',bg:'var(--grad-soft)',fg:'var(--cyan)' },
+  queue:  { badge:'b-queue',  label:'QUEUED',    ico:'clock',   bg:'var(--line)',     fg:'var(--t2)' },
+  cancel: { badge:'b-cancel', label:'CANCELLED', ico:'x',       bg:'var(--bad-bg)',   fg:'var(--bad)' }
+};
+function taskCard(t){
+  const m = TASK_META[t.status];
+  let body = '';
+  if (t.status === 'run')
+    body = `<div class="task-progress"><div class="progress"><div class="progress-fill shimmer" style="width:${t.progress}%"></div></div>
+      <span class="pct">${Math.floor(t.progress)}%</span></div>
+      <div class="task-meta"><span>speed ${t.speed.toFixed(1)} MB/s</span><span>eta ${fmtEta(t)}</span><span>${fmtBytes(t.size)}</span></div>`;
+  if (t.status === 'queue') body = `<div class="task-meta"><span>waiting for the active task — queue is sequential</span></div>`;
+  if (t.status === 'done')  body = `<div class="task-meta"><span>completed</span><span>${fmtBytes(t.size)}</span></div>`;
+  if (t.status === 'cancel')body = `<div class="task-meta"><span>cancelled by admin</span></div>`;
+  return `<div class="task" data-tid="${t.id}">
+    <div class="task-ico" style="background:${m.bg};color:${m.fg}"><svg><use href="#i-${m.ico}"/></svg></div>
+    <div class="task-body">
+      <div class="task-r1"><span class="task-name">${esc(t.name)}</span><span class="badge ${m.badge}">${m.label}</span></div>
+      <div class="task-url">${esc(t.url)} · id ${t.id}</div>
+      ${body}
+      ${t.logsOpen && t.logs.length ? `<div class="log">${esc(t.logs.join('\n'))}</div>` : ''}
+    </div>
+    <div class="task-actions">
+      ${t.logs.length ? '<button class="t-btn" data-tact="logs" title="Logs"><svg><use href="#i-terminal"/></svg></button>' : ''}
+      ${t.status === 'run' ? '<button class="t-btn danger" data-tact="cancel" title="Cancel"><svg><use href="#i-x"/></svg></button>' : ''}
+      ${t.status === 'cancel' || t.status === 'queue' ? '<button class="t-btn" data-tact="retry" title="Retry / promote"><svg><use href="#i-retry"/></svg></button>' : ''}
+    </div>
+  </div>`;
+}
+function fmtEta(t){
+  const remain = (100 - t.progress) / 100 * (t.size / 1048576) / t.speed;
+  const mm = Math.floor(remain / 60), ss = Math.floor(remain % 60);
+  return `${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+}
+function renderTasks(){
+  $('#tasksList').innerHTML = tasks.map(taskCard).join('') ||
+    '<div class="empty"><svg><use href="#i-check"/></svg><div class="t">Queue is empty</div><div class="s">Fetch a video to see the task engine in action</div></div>';
+  $('#dashTasks').innerHTML = tasks.slice(0, 3).map(taskCard).join('');
+  const n = tasks.filter(t => t.status === 'run' || t.status === 'queue').length;
+  const badge = $('#navTaskBadge');
+  badge.textContent = n; badge.style.display = n ? '' : 'none';
+}
+function promoteQueue(){
+  if (tasks.some(t => t.status === 'run')) return;
+  const next = tasks.find(t => t.status === 'queue');
+  if (next){ next.status = 'run'; next.progress = 0; next.speed = 2.4 + Math.random() * 3;
+    next.logs = [`[youtube] Extracting URL: ${next.url}`, '[youtube] Downloading webpage',
+      `[download] Destination: ${next.name.replace(/[^\w.-]+/g,'_')}.${'webm'}`]; }
+  renderTasks();
+}
+
+/* ---------------- donut ---------------- */
+function renderDonut(){
+  const total = totalBytes() || 1;
+  const C = 2 * Math.PI * 57;
+  let acc = 0, segs = '', legend = '';
+  ['manual','youtube','old'].forEach(cat => {
+    const b = files.filter(f => f.cat === cat).reduce((a, f) => a + f.size, 0);
+    const len = C * b / total;
+    segs += `<circle class="seg" cx="75" cy="75" r="57" stroke="${CATS[cat].color}"
+      stroke-dasharray="${len.toFixed(2)} ${(C - len).toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}"/>`;
+    acc += len;
+    legend += `<div class="lg-row"><span class="lg-dot" style="background:${CATS[cat].color}"></span>
+      <span class="lbl">${CATS[cat].label}</span><span class="v">${fmtBytes(b)}</span><span class="p">${(100 * b / total).toFixed(1)}%</span></div>`;
+  });
+  $('#donutSvg').innerHTML = segs;
+  $('#donutLegend').innerHTML = legend;
+  $('#donutTotal').textContent = fmtBytes(total);
+}
+
+/* ---------------- live stats ---------------- */
+const stats = {
+  cpu:{ v:68.3, hist:[] }, ram:{ v:83.8, hist:[] }, net:{ v:4.2, hist:[] }
+};
+(function seed(){
+  for (let i = 0; i < 44; i++){
+    stats.cpu.hist.push(55 + Math.sin(i / 5) * 14 + Math.random() * 8);
+    stats.ram.hist.push(80 + Math.sin(i / 7) * 4 + Math.random() * 2.4);
+    stats.net.hist.push(3 + Math.random() * 3.4);
+  }
+})();
+function updateSpark(lineId, areaId, hist){
+  const w = 200, h = 52, n = hist.length;
+  const min = Math.min(...hist), max = Math.max(...hist), rng = (max - min) || 1;
+  const pts = hist.map((v, i) => [i / (n - 1) * w, h - 6 - (v - min) / rng * (h - 14)]);
+  let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+  for (let i = 1; i < n; i++){
+    const [x0, y0] = pts[i-1], [x1, y1] = pts[i], mx = ((x0 + x1) / 2).toFixed(1);
+    d += ` C${mx},${y0.toFixed(1)} ${mx},${y1.toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)}`;
+  }
+  $(lineId).setAttribute('d', d);
+  $(areaId).setAttribute('d', d + ` L${w},${h} L0,${h} Z`);
+}
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+function tickStats(){
+  stats.cpu.v = clamp(stats.cpu.v + (Math.random() - .48) * 9, 18, 96);
+  stats.ram.v = clamp(stats.ram.v + (Math.random() - .5) * 2.6, 62, 95);
+  stats.net.v = clamp(stats.net.v + (Math.random() - .5) * 2.2, .6, 9.6);
+  stats.cpu.hist.push(stats.cpu.v); stats.cpu.hist.shift();
+  stats.ram.hist.push(stats.ram.v); stats.ram.hist.shift();
+  stats.net.hist.push(stats.net.v); stats.net.hist.shift();
+  $('#cpuVal').textContent = stats.cpu.v.toFixed(1);
+  $('#ramVal').textContent = stats.ram.v.toFixed(1);
+  $('#netVal').textContent = stats.net.v.toFixed(1);
+  $('#ramUsed').textContent = (stats.ram.v / 100 * 16).toFixed(1);
+  updateSpark('#cpuLine', '#cpuArea', stats.cpu.hist);
+  updateSpark('#ramLine', '#ramArea', stats.ram.hist);
+  updateSpark('#netLine', '#netArea', stats.net.hist);
+  const p = clamp(64.7 + (Math.random() - .5) * .3, 60, 70);
+  $('#diskVal').textContent = p.toFixed(1);
+  $('#diskRing').style.strokeDashoffset = (326.7 * (1 - p / 100)).toFixed(1);
+  tickTasks();
+}
+function tickTasks(){
+  let changed = false;
+  tasks.forEach(t => {
+    if (t.status !== 'run') return;
+    changed = true;
+    t.progress = Math.min(100, t.progress + 1.6 + Math.random() * 3.4);
+    t.speed = clamp(t.speed + (Math.random() - .5) * .8, 1.2, 6.4);
+    const pct = t.progress.toFixed(1);
+    t.logs = t.logs.slice(0, -1).concat(
+      `[download] ${pct}% of ${fmtBytes(t.size).replace(' ','')} at ${t.speed.toFixed(2)}MiB/s ETA ${fmtEta(t)}`);
+    if (t.progress >= 100){
+      t.status = 'done';
+      t.logs = t.logs.slice(0, -1).concat('[download] 100% of ' + fmtBytes(t.size),
+        '[Merger] Merging formats — ffmpeg');
+      const name = t.name.replace(/[^\w.-]+/g, '_') + '.webm';
+      files.unshift({ id:++fid, name, cat:'youtube', size:t.size, date:'Nov 21, 14:02', type:'video' });
+      toast(`${name} added to YouTube Library`, { type:'ok' });
+      updateCounts(); renderFiles(); renderDonut(); renderMedia();
+      setTimeout(promoteQueue, 900);
+    }
+  });
+  if (changed) renderTasks();
+}
+
+/* uptime */
+let upSec = 14 * 86400 + 6 * 3600 + 32 * 60;
+setInterval(() => {
+  upSec++;
+  const d = Math.floor(upSec / 86400), h = Math.floor(upSec % 86400 / 3600),
+        m = Math.floor(upSec % 3600 / 60), s = upSec % 60;
+  $('#sbUptime').textContent = `${d}d ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}, 1000);
+setInterval(tickStats, 1400);
+
+/* ---------------- navigation ---------------- */
+const TITLES = {
+  dashboard:['Overview','live system status'],
+  media:['Media Center','cinema mode · smart subtitles'],
+  tasks:['Background Tasks','sequential yt-dlp queue'],
+  settings:['Settings','secure_server.py']
+};
+function go(view){
+  state.view = view;
+  $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
+  $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
+  const t = view === 'files'
+    ? ['Files', `${files.length} items · ${fmtBytes(totalBytes())} total`]
+    : TITLES[view];
+  $('#tbTitle').textContent = t[0]; $('#tbSub').textContent = t[1];
+  $('#sidebar').classList.remove('open'); $('#sbScrim').classList.remove('open');
+}
+$$('.nav-item').forEach(n => n.onclick = () => go(n.dataset.view));
+$$('[data-goto]').forEach(b => b.onclick = () => go(b.dataset.goto));
+$$('.nav-sub').forEach(b => b.onclick = () => { go('files'); setChip(b.dataset.cat); });
+$('#hamburger').onclick = () => { $('#sidebar').classList.toggle('open'); $('#sbScrim').classList.toggle('open'); };
+$('#sbScrim').onclick = () => { $('#sidebar').classList.remove('open'); $('#sbScrim').classList.remove('open'); };
+
+function setChip(cat){
+  state.cat = cat;
+  $$('#catChips .chip').forEach(c => c.classList.toggle('active', c.dataset.cat === cat));
+  renderFiles();
+}
+$$('#catChips .chip').forEach(c => c.onclick = () => setChip(c.dataset.cat));
+$('#fileSearch').oninput = e => { state.q = e.target.value.trim(); renderFiles(); };
+$('#fileSort').onchange = e => { state.sort = e.target.value; renderFiles(); };
+
+/* ---------------- upload ---------------- */
+const dz = $('#dropzone'), fileInput = $('#fileInput');
+function extType(name){
+  const e = (name.split('.').pop() || '').toLowerCase();
+  if (['mp4','mkv','webm','mov'].includes(e)) return 'video';
+  if (['mp3','wav','flac','m4a'].includes(e)) return 'audio';
+  if (['jpg','jpeg','png','gif','webp'].includes(e)) return 'image';
+  if (['zip','tar','gz','rar','7z'].includes(e)) return 'archive';
+  return 'text';
+}
+let dzTimer = null;
+function addFiles(list){
+  const arr = [...list]; if (!arr.length) return;
+  const now = new Date();
+  const stamp = `${now.toLocaleString('en',{month:'short'})} ${now.getDate()}, ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  arr.forEach(f => files.unshift({ id:++fid, name:f.name, cat:'manual', size:f.size, date:stamp, type:extType(f.name) }));
+  updateCounts(); renderFiles(); renderDonut(); renderMedia(); renderRecent();
+  const prog = $('#dzProg'); prog.classList.remove('hidden');
+  $('#dzName').textContent = arr.length === 1 ? arr[0].name : `${arr.length} files`;
+  let p = 0;
+  clearInterval(dzTimer);
+  dzTimer = setInterval(() => {
+    p = Math.min(100, p + 4 + Math.random() * 9);
+    $('#dzPct').textContent = Math.floor(p) + '%';
+    $('#dzBar').style.width = p + '%';
+    if (p >= 100){
+      clearInterval(dzTimer);
+      setTimeout(() => { prog.classList.add('hidden'); $('#dzBar').style.width = '0%'; }, 700);
+      toast(`${arr.length} file${arr.length > 1 ? 's' : ''} uploaded to Manual Uploads`, { type:'ok' });
+    }
+  }, 120);
+}
+dz.onclick = () => fileInput.click();
+dz.ondragover = e => { e.preventDefault(); dz.classList.add('drag'); };
+dz.ondragleave = () => dz.classList.remove('drag');
+dz.ondrop = e => { e.preventDefault(); dz.classList.remove('drag'); addFiles(e.dataTransfer.files); };
+fileInput.onchange = () => { addFiles(fileInput.files); fileInput.value = ''; };
+$('#uploadBtn').onclick = () => fileInput.click();
+$('#qUpload').onclick = () => fileInput.click();
+
+/* file actions */
+$('#fileSections').addEventListener('click', e => {
+  const btn = e.target.closest('[data-act]'); if (!btn) return;
+  const row = e.target.closest('.file-row');
+  const f = files.find(x => x.id == row.dataset.id); if (!f) return;
+  const act = btn.dataset.act;
+  if (act === 'play') return openPlayer(f);
+  if (act === 'del'){
+    if (f.type === 'folder'){
+      openConfirm({
+        title:`Delete folder "${f.name}"?`, sub:'Nuclear delete',
+        msg:`The folder and its ${f.items} items will be removed immediately.`,
+        onOk(){
+          files.splice(files.indexOf(f), 1);
+          refreshAll(); toast('Folder deleted permanently', { type:'bad' });
+        }
+      });
+    } else {
+      const idx = files.indexOf(f);
+      files.splice(idx, 1); refreshAll();
+      toast(`Deleted ${f.name}`, { type:'bad', action:{ label:'Undo', run(){ files.splice(idx, 0, f); refreshAll(); } } });
+    }
+    return;
+  }
+  if (act === 'rename'){
+    const nm = row.querySelector('.nm');
+    nm.innerHTML = `<input value="${esc(f.name)}" style="all:unset;font-size:13px;min-width:120px;border-bottom:1px solid var(--cyan);color:var(--t1)">`;
+    const inp = nm.querySelector('input'); inp.focus(); inp.select();
+    const save = () => { const v = inp.value.trim(); if (v) f.name = v; refreshAll();
+      if (v) toast(`Renamed to ${v}`, { type:'ok' }); };
+    inp.onblur = save;
+    inp.onkeydown = ev => { if (ev.key === 'Enter') inp.blur(); if (ev.key === 'Escape'){ inp.value = f.name; inp.blur(); } };
+  }
+});
+function refreshAll(){ updateCounts(); renderFiles(); renderDonut(); renderMedia(); renderRecent(); }
+
+/* media cards -> player */
+['#mediaGrid','#mediaGridManual'].forEach(sel =>
+  $(sel).addEventListener('click', e => {
+    const card = e.target.closest('.m-card'); if (!card) return;
+    const f = files.find(x => x.id == card.dataset.id);
+    if (f) openPlayer(f);
+  }));
+$('#mediaHero').onclick = () => { const f = files.find(x => x.name.includes('Lord_of_Mysteries')); openPlayer(f, 0.62); };
+$('#audioPlayBtn').onclick = () => { const f = files.find(x => x.name.includes('Saiyaara')); openPlayer(f); };
+
+/* ---------------- task actions ---------------- */
+function wireTasks(sel){
+  $(sel).addEventListener('click', e => {
+    const btn = e.target.closest('[data-tact]'); if (!btn) return;
+    const t = tasks.find(x => x.id === btn.closest('.task').dataset.tid); if (!t) return;
+    if (btn.dataset.tact === 'logs') t.logsOpen = !t.logsOpen;
+    if (btn.dataset.tact === 'cancel'){ t.status = 'cancel'; toast(`Task cancelled — ${t.name}`, { type:'bad' }); setTimeout(promoteQueue, 600); }
+    if (btn.dataset.tact === 'retry'){ t.status = 'queue'; t.progress = 0; toast('Task re-queued', { type:'info' }); setTimeout(promoteQueue, 900); }
+    renderTasks();
+  });
+}
+wireTasks('#tasksList'); wireTasks('#dashTasks');
+$('#clearDone').onclick = () => { tasks = tasks.filter(t => t.status !== 'done'); renderTasks(); toast('Completed tasks cleared', { type:'info' }); };
+$('#clearWatched').onclick = () => toast('Watch history cleared (demo)', { type:'info' });
+
+/* ---------------- fetch modal ---------------- */
+const fetchModal = $('#fetchModal');
+let fmt = 'mp4';
+function openFetch(){ fetchModal.classList.add('open'); setTimeout(() => $('#fetchUrl').focus(), 60); }
+$('#fetchBtn').onclick = openFetch; $('#qFetch').onclick = openFetch;
+$$('#fmtSeg .seg-btn').forEach(b => b.onclick = () => {
+  fmt = b.dataset.fmt;
+  $$('#fmtSeg .seg-btn').forEach(x => x.classList.toggle('active', x === b));
+});
+$('#pasteBtn').onclick = async () => {
+  try { const t = await navigator.clipboard.readText(); if (t) $('#fetchUrl').value = t.trim(); }
+  catch { toast('Clipboard unavailable — paste manually', { type:'info' }); }
+};
+$('#fetchSubmit').onclick = () => {
+  const url = $('#fetchUrl').value.trim();
+  if (!/youtu\.?be/i.test(url)){ toast('Enter a valid YouTube URL', { type:'bad' }); $('#fetchUrl').focus(); return; }
+  const m = url.match(/(?:youtu\.be\/|v=|shorts\/)([\w-]{4,})/);
+  const q = $('#fetchQuality').value, dest = $('#fetchDest').value;
+  const t = mkTask({
+    name:(m ? 'yt_' + m[1] : 'youtube_video') + (fmt === 'mp3' ? ' [audio]' : ' [' + (q === 'Best available' ? 'best' : q) + ']'),
+    url, status:'queue', size:Math.floor(40e6 + Math.random() * 500e6),
+    logs:['[queue] waiting for the active task — sequential yt-dlp queue']
+  });
+  tasks.push(t);
+  renderTasks();
+  fetchModal.classList.remove('open');
+  $('#fetchUrl').value = '';
+  toast(`Task queued — saving to ${dest}`, { type:'ok' });
+  setTimeout(promoteQueue, 800);
+};
+
+/* ---------------- confirm modal ---------------- */
+const confirmModal = $('#confirmModal');
+let cfCb = null;
+function openConfirm({ title, sub, msg, onOk }){
+  $('#cfTitle').textContent = title; $('#cfSub').textContent = sub || '';
+  $('#cfMsg').textContent = msg;
+  cfCb = onOk; confirmModal.classList.add('open');
+}
+$('#cfOk').onclick = () => { confirmModal.classList.remove('open'); if (cfCb) cfCb(); };
+$('#stopServer').onclick = () => openConfirm({
+  title:'Stop PyCloud server?', sub:'pkill -f secure_server.py',
+  msg:'All active downloads will be cancelled and the dashboard goes offline until you restart the script.',
+  onOk(){
+    toast('Server stopped — restart with nohup python3 secure_server.py &', { type:'bad' });
+    setTimeout(() => $('#login').classList.add('open'), 900);
+  }
+});
+
+/* ---------------- command palette ---------------- */
+const palette = $('#palette'), palInput = $('#palInput');
+let palItems = [], palSel = 0;
+const commands = [
+  { t:'Go to Overview', ico:'dash', run:() => go('dashboard') },
+  { t:'Go to Files', ico:'folder', run:() => go('files') },
+  { t:'Go to Media Center', ico:'play-circle', run:() => go('media') },
+  { t:'Go to Background Tasks', ico:'list', run:() => go('tasks') },
+  { t:'Go to Settings', ico:'sliders', run:() => go('settings') },
+  { t:'Fetch video from YouTube', ico:'yt', run:openFetch },
+  { t:'Upload files', ico:'upload', run:() => fileInput.click() },
+  { t:'Toggle dark / light theme', ico:'sun', run:toggleTheme },
+  { t:'Sign out', ico:'logout', run:logout }
+];
+function renderPal(){
+  const q = palInput.value.trim().toLowerCase();
+  const acts = commands.filter(c => !q || c.t.toLowerCase().includes(q));
+  const fs = files.filter(f => q && f.name.toLowerCase().includes(q)).slice(0, 7);
+  palItems = [
+    ...acts.map(c => ({ label:c.t, ico:c.ico, sub:'action', run:c.run })),
+    ...fs.map(f => ({ label:f.name, ico:TYPES[f.type].icon, sub:fmtBytes(f.size),
+      run(){ if (isMedia(f)) openPlayer(f); else { go('files'); setChip('all'); $('#fileSearch').value = f.name; state.q = f.name; renderFiles(); } } }))
+  ];
+  palSel = clamp(palSel, 0, Math.max(0, palItems.length - 1));
+  let html = '';
+  if (acts.length){
+    html += '<div class="pal-group">Actions</div>' + acts.map((c, i) => palRow(c, i)).join('');
+  }
+  if (fs.length){
+    html += '<div class="pal-group">Files</div>' + fs.map((f, i) => palRow({ t:f.name, ico:TYPES[f.type].icon, sub:fmtBytes(f.size) }, acts.length + i)).join('');
+  }
+  $('#palList').innerHTML = html || '<div class="pal-empty">Nothing found — try another search</div>';
+  $$('#palList .pal-item').forEach((el, i) => {
+    el.onmouseenter = () => { palSel = i; markSel(); };
+    el.onclick = () => { closePalette(); palItems[i] && palItems[i].run(); };
+  });
+  markSel();
+}
+function palRow(c, i){
+  return `<button class="pal-item" data-i="${i}"><span class="pi"><svg><use href="#i-${c.ico}"/></svg></span>
+    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.t || c.label || '')}</span>
+    <span class="sub">${esc(c.sub || '')}</span></button>`;
+}
+function markSel(){
+  $$('#palList .pal-item').forEach((el, i) => el.classList.toggle('sel', i === palSel));
+  const sel = $('#palList .pal-item.sel'); if (sel) sel.scrollIntoView({ block:'nearest' });
+}
+function openPalette(){ palette.classList.add('open'); palInput.value = ''; palSel = 0; renderPal(); setTimeout(() => palInput.focus(), 60); }
+function closePalette(){ palette.classList.remove('open'); }
+$('#searchPill').onclick = openPalette;
+palInput.oninput = () => { palSel = 0; renderPal(); };
+palInput.onkeydown = e => {
+  if (e.key === 'ArrowDown'){ e.preventDefault(); palSel = clamp(palSel + 1, 0, palItems.length - 1); markSel(); }
+  if (e.key === 'ArrowUp'){ e.preventDefault(); palSel = clamp(palSel - 1, 0, palItems.length - 1); markSel(); }
+  if (e.key === 'Enter'){ e.preventDefault(); const it = palItems[palSel]; closePalette(); if (it) it.run(); }
+};
+
+/* ---------------- player ---------------- */
+const playerEl = $('#player');
+const pl = { file:null, dur:0, cur:0, playing:false, int:null };
+function parseDur(s){
+  if (!s || s === 'LIVE') return 3600;
+  return s.split(':').reverse().reduce((a, x, i) => a + (+x) * Math.pow(60, i), 0);
+}
+function fmtTime(s){
+  s = Math.floor(s);
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60;
+  return (h ? h + ':' : '') + `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+}
+function openPlayer(f, resume = 0){
+  if (!f) return;
+  pl.file = f; pl.dur = parseDur(f.dur) || 600;
+  pl.cur = resume * pl.dur; pl.playing = true;
+  $('#plTitle').textContent = f.name;
+  $('#plPosterT').textContent = f.name;
+  const audio = f.type === 'audio';
+  $('#plBadge').textContent = audio ? 'AUDIO' : 'CINEMA';
+  $('#plFmt').textContent = `${f.name.split('.').pop().toUpperCase()} · ${fmtBytes(f.size)}`;
+  $('#plPosterS').textContent = `${f.name.split('.').pop().toUpperCase()} · ${fmtBytes(f.size)} · streaming from your server`;
+  $('#plPosterIco').innerHTML = `<use href="#i-${audio ? 'music' : 'film'}"/>`;
+  $('#plDur').textContent = f.dur === 'LIVE' ? 'LIVE' : fmtTime(pl.dur);
+  $('#plPlayIco').innerHTML = '<use href="#i-pause"/>';
+  $('#plSub').classList.remove('show'); $('#plCC').classList.remove('on');
+  playerEl.classList.add('open'); playerEl.classList.remove('paused');
+  clearInterval(pl.int);
+  pl.int = setInterval(() => {
+    if (!pl.playing) return;
+    pl.cur = Math.min(pl.dur, pl.cur + 0.5);
+    if (pl.cur >= pl.dur) setPlaying(false);
+    drawPlayer();
+  }, 500);
+  drawPlayer();
+  toast(audio ? 'Playing — Saiyara (MP3)' : 'Cinema mode — subtitles ready (.vtt)', { type:'info' });
+}
+function drawPlayer(){
+  const p = pl.dur ? pl.cur / pl.dur * 100 : 0;
+  $('#plFill').style.width = p + '%';
+  $('#plKnob').style.left = p + '%';
+  $('#plCur').textContent = fmtTime(pl.cur);
+}
+function setPlaying(on){
+  pl.playing = on;
+  playerEl.classList.toggle('paused', !on);
+  $('#plPlayIco').innerHTML = `<use href="#i-${on ? 'pause' : 'play'}"/>`;
+}
+function closePlayer(){ playerEl.classList.remove('open'); clearInterval(pl.int); }
+$('#plPlay').onclick = () => setPlaying(!pl.playing);
+$('#plClose').onclick = closePlayer;
+$('#plBack').onclick = () => { pl.cur = Math.max(0, pl.cur - 10); drawPlayer(); };
+$('#plSeek').onclick = e => {
+  const r = e.currentTarget.getBoundingClientRect();
+  pl.cur = clamp((e.clientX - r.left) / r.width, 0, 1) * pl.dur; drawPlayer();
+};
+$('#plCC').onclick = () => {
+  $('#plCC').classList.toggle('on');
+  $('#plSub').classList.toggle('show');
+};
+$('#plFull').onclick = () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else playerEl.requestFullscreen && playerEl.requestFullscreen();
+};
+
+/* ---------------- theme ---------------- */
+function applyTheme(t){
+  document.documentElement.dataset.theme = t;
+  $('#themeToggle').innerHTML = `<svg><use href="#i-${t === 'dark' ? 'sun' : 'moon'}"/></svg>`;
+  try { localStorage.setItem('pc-theme', t); } catch {}
+}
+function toggleTheme(){
+  applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+}
+$('#themeToggle').onclick = toggleTheme;
+(function initTheme(){
+  let t = 'dark';
+  try { t = localStorage.getItem('pc-theme') || 'dark'; } catch {}
+  applyTheme(t);
+})();
+
+/* ---------------- login ---------------- */
+function logout(){
+  closePalette(); closePlayer();
+  $('#toasts').innerHTML = '';
+  $$('.overlay').forEach(o => o.classList.remove('open'));
+  $('#login').classList.add('open');
+}
+$('#logoutBtn').onclick = logout;
+$('#loginForm').onsubmit = e => {
+  e.preventDefault();
+  $('#login').classList.remove('open');
+  toast('Welcome back — session restored on your server', { type:'ok' });
+};
+
+/* ---------------- overlays / keyboard ---------------- */
+$$('.overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+  o.querySelectorAll('[data-close]').forEach(b => b.onclick = () => o.classList.remove('open'));
+});
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k'){
+    e.preventDefault();
+    palette.classList.contains('open') ? closePalette() : openPalette();
+  }
+  if (e.key === 'Escape'){
+    closePalette();
+    $$('.overlay.open').forEach(o => o.classList.remove('open'));
+    if (playerEl.classList.contains('open')) closePlayer();
+  }
+});
+
+/* ---------------- boot ---------------- */
+(function boot(){
+  const h = new Date().getHours();
+  $('#greet').textContent = `Good ${h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening'}, admin`;
+  updateCounts(); renderFiles(); renderDonut(); renderTasks();
+  renderRecent(); renderMedia();
+  updateSpark('#cpuLine', '#cpuArea', stats.cpu.hist);
+  updateSpark('#ramLine', '#ramArea', stats.ram.hist);
+  updateSpark('#netLine', '#netArea', stats.net.hist);
+  setTimeout(() => toast('PyCloud v8.6 redesign — press Ctrl K anywhere', { type:'info' }), 1200);
+})();
+</script>
+</body>
+</html>

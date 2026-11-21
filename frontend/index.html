@@ -1,264 +1,909 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="graphite" data-motion="full">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PyCloud v2.0 - Private Cloud</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="dark light">
+    <meta name="theme-color" content="#171614">
+    <meta name="description" content="PyCloud — self-hosted private cloud, file manager and media server.">
+    <title>PyCloud — Private Cloud</title>
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/static/css/style.css">
+    <script src="/static/js/theme.js"></script>
 </head>
 <body>
-    <!-- Top Bar -->
-    <header class="top-bar">
-        <div class="brand">
-            <span class="logo">☁️</span>
-            <h1>PyCloud <span class="version-tag">v2.0</span></h1>
-        </div>
+    <a class="skip-link" href="#main">Skip to content</a>
 
-        <!-- System Stats Bar -->
-        <div class="stats-row" id="statsRow">
-            <div class="stat-pill" title="CPU Load">
-                <span class="stat-icon">⚡</span>
-                <span class="stat-label">CPU</span>
-                <span id="statCpu" class="stat-value">...</span>
-            </div>
-            <div class="stat-pill" title="RAM Usage">
-                <span class="stat-icon">🧠</span>
-                <span class="stat-label">RAM</span>
-                <span id="statRam" class="stat-value">...</span>
-            </div>
-            <div class="stat-pill" title="Free Disk Space">
-                <span class="stat-icon">💾</span>
-                <span class="stat-label">Free</span>
-                <span id="statDisk" class="stat-value">...</span>
-            </div>
-        </div>
+    <!-- Icon sprite (stroke icons, currentColor) -->
+    <svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+        <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></symbol>
+        <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.2l2 2H18.5A2.5 2.5 0 0 1 21 9.5v8A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5Z"/></symbol>
+        <symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7.5 4v16M16.5 4v16M3 9h4.5M3 15h4.5M16.5 9H21M16.5 15H21"/></symbol>
+        <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></symbol>
+        <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h8M16 7h4M4 12h3M11 12h9M4 17h10M18 17h2"/><circle cx="14" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="16" cy="17" r="2"/></symbol>
+        <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></symbol>
+        <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v12M8 12l4 4 4-4"/><path d="M4 20h16"/></symbol>
+        <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></symbol>
+        <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+        <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></symbol>
+        <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+        <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6"/><path d="m6 7 1 13h10l1-13M9 7V4h6v3"/></symbol>
+        <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L18 10l-4-4L4 16Z"/><path d="m13 7 4 4"/></symbol>
+        <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5Z"/></symbol>
+        <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+        <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></symbol>
+        <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></symbol>
+        <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></symbol>
+        <symbol id="i-archive" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v11h14V9M10 13h4"/></symbol>
+        <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+        <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+        <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+        <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.4 5.7"/><path d="M20 4v7h-7"/></symbol>
+        <symbol id="i-logout" viewBox="0 0 24 24"><path d="M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h5"/><path d="m15 8 4 4-4 4M19 12H9"/></symbol>
+        <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+        <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20.5h19Z"/><path d="M12 9.5v5M12 17.5h.01"/></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L20 6.5"/></symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.2l3.2 2"/></symbol>
+        <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/></symbol>
+        <symbol id="i-hard-drive" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 13h18M7 16.5h.01M11 16.5h.01"/></symbol>
+        <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M10 2.5v3M14 2.5v3M10 18.5v3M14 18.5v3M2.5 10h3M2.5 14h3M18.5 10h3M18.5 14h3"/></symbol>
+        <symbol id="i-memory" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="9" rx="2"/><path d="M7 8V5M12 8V5M17 8V5M7 17v2M12 17v2M17 17v2"/></symbol>
+        <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M4 12h16M14 6l6 6-6 6"/></symbol>
+        <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+        <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></symbol>
+        <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></symbol>
+        <symbol id="i-youtube" viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="4"/><path d="m10.5 9.5 4.5 2.5-4.5 2.5Z"/></symbol>
+        <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10" width="15" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+        <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6Z"/><path d="m9 12 2 2 4-4"/></symbol>
+        <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4-2v-4Z"/></symbol>
+        <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+        <symbol id="i-corner" viewBox="0 0 24 24"><path d="M6 4v9a2 2 0 0 0 2 2h10"/><path d="m14 11 4 4-4 4"/></symbol>
+    </svg>
 
-        <div class="header-actions">
-            <button id="btnFetchVideo" class="btn btn-primary" title="Fetch video from YouTube or other streaming sites">
-                <span>▶</span> Fetch Media
-            </button>
-            <button id="btnNewFolder" class="btn btn-secondary" title="Create new subfolder">
-                <span>📁</span> New Folder
-            </button>
-            <button id="btnLogout" class="btn btn-outline" title="Log out">
-                <span>🔒</span> Logout
-            </button>
-        </div>
-    </header>
+    <div class="app-shell" id="appShell">
+        <!-- ── Sidebar ─────────────────────────────────────────── -->
+        <aside class="sidebar" id="sidebar" aria-label="Primary navigation">
+            <div class="sidebar-head">
+                <a class="brand" href="#overview" data-nav="overview" aria-label="PyCloud overview">
+                    <span class="brand-mark" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M6.5 18h10.8a4 4 0 0 0 .5-8A5.7 5.7 0 0 0 7.1 11 3.6 3.6 0 0 0 6.5 18Z"/>
+                            <circle cx="17.6" cy="6.4" r="1.8" fill="currentColor" stroke="none"/>
+                        </svg>
+                    </span>
+                    <span class="brand-text">
+                        <strong>PyCloud</strong>
+                        <span class="brand-ver mono">v2.0</span>
+                    </span>
+                </a>
+                <button class="icon-btn sidebar-close" id="btnSidebarClose" type="button" aria-label="Close navigation">
+                    <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+                </button>
+            </div>
 
-    <!-- Main Container -->
-    <main class="main-container">
-        <!-- Task Manager Widget -->
-        <section class="task-widget" id="taskWidget">
-            <div class="task-widget-header" id="taskHeaderToggle">
-                <div class="task-header-title">
-                    <span class="pulse-dot"></span>
-                    <strong>Background Task Engine</strong>
-                    <span id="activeTasksCount" class="badge">0</span>
+            <nav class="nav" aria-label="Workspace">
+                <p class="nav-label mono">Workspace</p>
+                <a class="nav-item" href="#overview" data-nav="overview">
+                    <svg class="icon" aria-hidden="true"><use href="#i-home"></use></svg>
+                    <span>Overview</span>
+                </a>
+                <a class="nav-item" href="#files" data-nav="files">
+                    <svg class="icon" aria-hidden="true"><use href="#i-folder"></use></svg>
+                    <span>Files</span>
+                </a>
+                <a class="nav-item" href="#media" data-nav="media">
+                    <svg class="icon" aria-hidden="true"><use href="#i-film"></use></svg>
+                    <span>Media</span>
+                </a>
+                <a class="nav-item" href="#tasks" data-nav="tasks">
+                    <svg class="icon" aria-hidden="true"><use href="#i-terminal"></use></svg>
+                    <span>Tasks</span>
+                    <span class="nav-badge mono" id="navTaskBadge" hidden>0</span>
+                </a>
+                <a class="nav-item" href="#settings" data-nav="settings">
+                    <svg class="icon" aria-hidden="true"><use href="#i-sliders"></use></svg>
+                    <span>Settings</span>
+                </a>
+
+                <p class="nav-label mono">Libraries</p>
+                <button class="nav-sub" type="button" data-library="uploads">
+                    <span class="dot dot-cat dot-cat-uploads" aria-hidden="true"></span>
+                    <span>Uploads</span>
+                    <span class="nav-count mono" data-count="uploads">—</span>
+                </button>
+                <button class="nav-sub" type="button" data-library="youtube">
+                    <span class="dot dot-cat dot-cat-youtube" aria-hidden="true"></span>
+                    <span>YouTube</span>
+                    <span class="nav-count mono" data-count="youtube">—</span>
+                </button>
+                <button class="nav-sub" type="button" data-library="trash">
+                    <span class="dot dot-cat dot-cat-trash" aria-hidden="true"></span>
+                    <span>Trash</span>
+                    <span class="nav-count mono" data-count="trash">—</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-foot">
+                <div class="server-card">
+                    <div class="server-line">
+                        <span class="dot dot-ok" id="serverDot" aria-hidden="true"></span>
+                        <span id="serverState">Server online</span>
+                        <span class="mono server-uptime" id="serverUptime">00:00</span>
+                    </div>
+                    <div class="server-endpoint mono" id="serverEndpoint">localhost</div>
+                    <div class="server-meta mono">
+                        <span id="serverProto">HTTP</span>
+                        <span id="serverVersion">v2.0.0</span>
+                    </div>
                 </div>
-                <button class="btn-icon" id="btnToggleTasks" title="Expand/Collapse Tasks">▼</button>
+                <div class="user-row">
+                    <span class="avatar" aria-hidden="true">A</span>
+                    <span class="user-text">
+                        <strong>admin</strong>
+                        <span class="mono">root session</span>
+                    </span>
+                    <button class="icon-btn" id="btnLogout" type="button" title="Sign out" aria-label="Sign out">
+                        <svg class="icon" aria-hidden="true"><use href="#i-logout"></use></svg>
+                    </button>
+                </div>
             </div>
-            <div class="task-list" id="taskList" style="display: none;">
-                <div class="empty-state">No background tasks</div>
-            </div>
-        </section>
+        </aside>
 
-        <!-- Navigation Breadcrumbs & Category Bar -->
-        <div class="nav-bar">
-            <div class="breadcrumbs" id="breadcrumbs">
-                <span class="crumb active" data-path="">🏠 Root</span>
+        <div class="scrim" id="sidebarScrim" hidden></div>
+
+        <!-- ── Workspace ───────────────────────────────────────── -->
+        <div class="workspace">
+            <header class="topbar">
+                <button class="icon-btn topbar-menu" id="btnMenu" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar">
+                    <svg class="icon" aria-hidden="true"><use href="#i-menu"></use></svg>
+                </button>
+                <div class="topbar-title">
+                    <h1 id="viewTitle">Overview</h1>
+                    <span class="topbar-sub mono" id="viewSub">System overview</span>
+                </div>
+                <div class="topbar-actions">
+                    <button class="search-trigger" id="btnPalette" type="button" aria-label="Search files and commands">
+                        <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+                        <span class="search-trigger-text">Search or run a command</span>
+                        <kbd class="kbd">Ctrl K</kbd>
+                    </button>
+                    <button class="icon-btn bordered theme-toggle" id="btnTheme" type="button" title="Switch theme" aria-label="Switch theme">
+                        <svg class="icon icon-sun" aria-hidden="true"><use href="#i-sun"></use></svg>
+                        <svg class="icon icon-moon" aria-hidden="true"><use href="#i-moon"></use></svg>
+                    </button>
+                    <button class="btn btn-soft" id="btnUploadTop" type="button">
+                        <svg class="icon" aria-hidden="true"><use href="#i-upload"></use></svg>
+                        <span class="btn-label">Upload</span>
+                    </button>
+                    <button class="btn btn-primary" id="btnFetchVideo" type="button">
+                        <svg class="icon" aria-hidden="true"><use href="#i-youtube"></use></svg>
+                        <span class="btn-label">Fetch media</span>
+                    </button>
+                </div>
+            </header>
+
+            <main class="main" id="main" tabindex="-1">
+                <div class="conn-banner" id="connBanner" hidden>
+                    <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+                    <span>Connection to the server was lost. Some data may be out of date.</span>
+                    <button class="btn btn-sm btn-soft" id="btnRetryConn" type="button">Retry</button>
+                </div>
+
+                <!-- ── Overview ─────────────────────────────────── -->
+                <section class="view" id="view-overview" data-view="overview" aria-labelledby="viewTitle">
+                    <header class="view-head">
+                        <div class="view-head-text">
+                            <p class="eyebrow mono">System / Overview</p>
+                            <h2 class="page-title" id="greeting">Welcome back, admin</h2>
+                            <p class="page-sub">
+                                <span class="dot dot-ok" aria-hidden="true"></span>
+                                <span id="systemState">All systems nominal</span>
+                                <span class="sep" aria-hidden="true">·</span>
+                                <span class="mono" id="localClock">--:--</span>
+                                <span class="sep" aria-hidden="true">·</span>
+                                <span class="mono" id="sessionUptime">session 00:00</span>
+                            </p>
+                        </div>
+                        <div class="view-head-actions">
+                            <button class="btn btn-soft btn-sm" id="btnRefreshOverview" type="button">
+                                <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
+                                Refresh
+                            </button>
+                        </div>
+                    </header>
+
+                    <div class="stat-grid">
+                        <article class="stat">
+                            <div class="stat-head">
+                                <span class="stat-label mono">CPU load</span>
+                                <span class="stat-ico"><svg class="icon" aria-hidden="true"><use href="#i-cpu"></use></svg></span>
+                            </div>
+                            <div class="stat-value mono" id="statCpu">—</div>
+                            <div class="spark" id="sparkCpu" aria-hidden="true"></div>
+                            <div class="stat-foot mono">1-minute load average</div>
+                        </article>
+                        <article class="stat">
+                            <div class="stat-head">
+                                <span class="stat-label mono">Memory</span>
+                                <span class="stat-ico"><svg class="icon" aria-hidden="true"><use href="#i-memory"></use></svg></span>
+                            </div>
+                            <div class="stat-value mono" id="statRam">—</div>
+                            <div class="spark" id="sparkRam" aria-hidden="true"></div>
+                            <div class="stat-foot mono">System RAM in use</div>
+                        </article>
+                        <article class="stat stat-disk">
+                            <div class="stat-head">
+                                <span class="stat-label mono">Disk</span>
+                                <span class="stat-ico"><svg class="icon" aria-hidden="true"><use href="#i-hard-drive"></use></svg></span>
+                            </div>
+                            <div class="disk-wrap">
+                                <div class="ring" id="diskRing" role="img" aria-label="Disk usage">
+                                    <span class="ring-label mono" id="diskPct">—</span>
+                                </div>
+                                <div class="disk-meta">
+                                    <strong class="mono" id="diskFree">—</strong>
+                                    <span class="mono muted">free</span>
+                                    <span class="mono muted" id="diskTotal">of —</span>
+                                </div>
+                            </div>
+                            <div class="stat-foot mono">Storage volume</div>
+                        </article>
+                        <article class="stat">
+                            <div class="stat-head">
+                                <span class="stat-label mono">Tasks</span>
+                                <span class="stat-ico"><svg class="icon" aria-hidden="true"><use href="#i-terminal"></use></svg></span>
+                            </div>
+                            <div class="stat-value mono" id="statTasks">0</div>
+                            <div class="task-pips" id="taskPips" aria-hidden="true"></div>
+                            <div class="stat-foot mono" id="statTasksFoot">No background work</div>
+                        </article>
+                    </div>
+
+                    <div class="overview-grid">
+                        <section class="panel">
+                            <header class="panel-head">
+                                <div>
+                                    <h3>Background tasks</h3>
+                                    <p class="panel-sub mono" id="overviewTaskSub">0 active</p>
+                                </div>
+                                <a class="text-link" href="#tasks">All tasks
+                                    <svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+                                </a>
+                            </header>
+                            <div class="mini-tasks" id="overviewTasks">
+                                <p class="empty-inline">No background tasks</p>
+                            </div>
+                        </section>
+
+                        <section class="panel">
+                            <header class="panel-head">
+                                <div>
+                                    <h3>Storage</h3>
+                                    <p class="panel-sub mono" id="storageSub">— used</p>
+                                </div>
+                            </header>
+                            <div class="storage-bar" id="storageBar" aria-hidden="true">
+                                <span class="seg seg-uploads"></span>
+                                <span class="seg seg-youtube"></span>
+                                <span class="seg seg-trash"></span>
+                                <span class="seg seg-other"></span>
+                            </div>
+                            <ul class="legend">
+                                <li>
+                                    <span class="dot dot-cat dot-cat-uploads" aria-hidden="true"></span>
+                                    <span class="legend-name">Uploads</span>
+                                    <span class="legend-val mono" data-storage="uploads">—</span>
+                                </li>
+                                <li>
+                                    <span class="dot dot-cat dot-cat-youtube" aria-hidden="true"></span>
+                                    <span class="legend-name">YouTube</span>
+                                    <span class="legend-val mono" data-storage="youtube">—</span>
+                                </li>
+                                <li>
+                                    <span class="dot dot-cat dot-cat-trash" aria-hidden="true"></span>
+                                    <span class="legend-name">Trash</span>
+                                    <span class="legend-val mono" data-storage="trash">—</span>
+                                </li>
+                                <li>
+                                    <span class="dot dot-cat dot-cat-other" aria-hidden="true"></span>
+                                    <span class="legend-name">Other files</span>
+                                    <span class="legend-val mono" data-storage="other">—</span>
+                                </li>
+                            </ul>
+                        </section>
+                    </div>
+
+                    <section class="panel">
+                        <header class="panel-head">
+                            <div>
+                                <h3>Quick actions</h3>
+                                <p class="panel-sub mono">Common operations</p>
+                            </div>
+                        </header>
+                        <div class="quick-grid">
+                            <button class="quick" type="button" id="qaUpload">
+                                <span class="quick-ico"><svg class="icon" aria-hidden="true"><use href="#i-upload"></use></svg></span>
+                                <span class="quick-text"><strong>Upload files</strong><span>Drag &amp; drop or browse</span></span>
+                                <svg class="icon quick-arrow" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+                            </button>
+                            <button class="quick" type="button" id="qaFetch">
+                                <span class="quick-ico"><svg class="icon" aria-hidden="true"><use href="#i-youtube"></use></svg></span>
+                                <span class="quick-text"><strong>Fetch media</strong><span>Queue a yt-dlp download</span></span>
+                                <svg class="icon quick-arrow" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+                            </button>
+                            <a class="quick" href="#media" data-nav="media">
+                                <span class="quick-ico"><svg class="icon" aria-hidden="true"><use href="#i-film"></use></svg></span>
+                                <span class="quick-text"><strong>Media center</strong><span>Play videos and audio</span></span>
+                                <svg class="icon quick-arrow" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+                            </a>
+                            <a class="quick" href="#tasks" data-nav="tasks">
+                                <span class="quick-ico"><svg class="icon" aria-hidden="true"><use href="#i-terminal"></use></svg></span>
+                                <span class="quick-text"><strong>Task console</strong><span>Logs, retries, queue</span></span>
+                                <svg class="icon quick-arrow" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+                            </a>
+                        </div>
+                    </section>
+
+                    <section class="panel">
+                        <header class="panel-head">
+                            <div>
+                                <h3>Recent files</h3>
+                                <p class="panel-sub mono">Newest at the root of the cloud</p>
+                            </div>
+                            <a class="text-link" href="#files" data-nav="files">Open files
+                                <svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+                            </a>
+                        </header>
+                        <div class="mini-table" id="recentFiles">
+                            <p class="empty-inline">Loading recent files…</p>
+                        </div>
+                    </section>
+                </section>
+
+                <!-- ── Files ────────────────────────────────────── -->
+                <section class="view" id="view-files" data-view="files" aria-labelledby="viewTitle" hidden>
+                    <header class="view-head">
+                        <div class="view-head-text">
+                            <p class="eyebrow mono">Workspace / Files</p>
+                            <h2 class="page-title">Files</h2>
+                            <nav class="breadcrumbs mono" id="breadcrumbs" aria-label="Breadcrumb"></nav>
+                        </div>
+                        <div class="view-head-actions">
+                            <button class="btn btn-soft btn-sm" id="btnNewFolder" type="button">
+                                <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>
+                                New folder
+                            </button>
+                        </div>
+                    </header>
+
+                    <div class="toolbar">
+                        <div class="search-field">
+                            <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+                            <input type="text" id="searchInput" placeholder="Filter this folder…" autocomplete="off" aria-label="Filter files in this folder">
+                            <button class="icon-btn search-clear" id="btnClearSearch" type="button" aria-label="Clear filter" hidden>
+                                <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+                            </button>
+                        </div>
+                        <div class="chips" id="categoryChips" role="group" aria-label="Library">
+                            <button class="chip is-active" type="button" data-cat="all">All files <span class="chip-count mono" data-chip-count="all">—</span></button>
+                            <button class="chip" type="button" data-cat="uploads"><span class="dot dot-cat dot-cat-uploads" aria-hidden="true"></span>Uploads <span class="chip-count mono" data-chip-count="uploads">—</span></button>
+                            <button class="chip" type="button" data-cat="youtube"><span class="dot dot-cat dot-cat-youtube" aria-hidden="true"></span>YouTube <span class="chip-count mono" data-chip-count="youtube">—</span></button>
+                            <button class="chip" type="button" data-cat="trash"><span class="dot dot-cat dot-cat-trash" aria-hidden="true"></span>Trash <span class="chip-count mono" data-chip-count="trash">—</span></button>
+                        </div>
+                        <label class="select-wrap">
+                            <span class="sr-only">Sort files</span>
+                            <select id="sortSelect" class="select">
+                                <option value="recent">Recent first</option>
+                                <option value="name">Name A–Z</option>
+                                <option value="size">Largest first</option>
+                            </select>
+                            <svg class="icon" aria-hidden="true"><use href="#i-chevron-down"></use></svg>
+                        </label>
+                    </div>
+
+                    <div class="dropzone" id="dropZone">
+                        <input type="file" id="fileInput" multiple hidden>
+                        <div class="dropzone-main">
+                            <span class="dropzone-ico"><svg class="icon" aria-hidden="true"><use href="#i-upload"></use></svg></span>
+                            <div class="dropzone-text">
+                                <strong>Drop files to upload</strong>
+                                <p>or <button class="link-btn" id="browseBtn" type="button">browse your computer</button> · saved to <code class="mono" id="uploadTarget">media/uploads</code></p>
+                            </div>
+                        </div>
+                        <div class="upload-panel" id="uploadProgressContainer" hidden>
+                            <div class="upload-row">
+                                <span class="upload-name" id="uploadFilename">Uploading…</span>
+                                <span class="mono" id="uploadPercentage">0%</span>
+                            </div>
+                            <div class="progress"><div class="progress-fill" id="uploadProgressBar"></div></div>
+                            <button class="btn btn-sm btn-danger-soft" id="btnCancelUpload" type="button">Cancel</button>
+                        </div>
+                    </div>
+
+                    <div class="notice" id="trashNotice" hidden>
+                        <svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg>
+                        <span>Items in Trash are removed from disk permanently. There is no restore step.</span>
+                    </div>
+
+                    <div class="file-table" id="fileTable">
+                        <div class="file-table-head" aria-hidden="true">
+                            <span>Name</span>
+                            <span>Type</span>
+                            <span class="num">Size</span>
+                            <span>Modified</span>
+                            <span class="actions-col">Actions</span>
+                        </div>
+                        <div class="file-rows" id="filesList" aria-live="polite">
+                            <p class="empty-inline">Loading files…</p>
+                        </div>
+                        <footer class="table-foot">
+                            <span class="mono" id="fileCountBadge">0 items</span>
+                            <span class="mono muted" id="fileTotalSize">—</span>
+                        </footer>
+                    </div>
+                </section>
+
+                <!-- ── Media ────────────────────────────────────── -->
+                <section class="view" id="view-media" data-view="media" aria-labelledby="viewTitle" hidden>
+                    <header class="view-head">
+                        <div class="view-head-text">
+                            <p class="eyebrow mono">Workspace / Media</p>
+                            <h2 class="page-title">Media</h2>
+                            <p class="page-sub mono" id="mediaSummary">Scanning libraries…</p>
+                        </div>
+                        <div class="view-head-actions">
+                            <button class="btn btn-soft btn-sm" id="btnRefreshMedia" type="button">
+                                <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
+                                Refresh
+                            </button>
+                        </div>
+                    </header>
+
+                    <div class="toolbar toolbar-media">
+                        <div class="chips" id="mediaChips" role="group" aria-label="Media type">
+                            <button class="chip is-active" type="button" data-media-filter="all">All <span class="chip-count mono" data-media-count="all">—</span></button>
+                            <button class="chip" type="button" data-media-filter="video">Video <span class="chip-count mono" data-media-count="video">—</span></button>
+                            <button class="chip" type="button" data-media-filter="audio">Audio <span class="chip-count mono" data-media-count="audio">—</span></button>
+                            <button class="chip" type="button" data-media-filter="image">Images <span class="chip-count mono" data-media-count="image">—</span></button>
+                        </div>
+                    </div>
+
+                    <div class="media-grid" id="mediaGrid"></div>
+
+                    <section class="audio-block" id="audioSection" hidden>
+                        <header class="panel-head">
+                            <div>
+                                <h3>Audio</h3>
+                                <p class="panel-sub mono" id="audioSub">—</p>
+                            </div>
+                        </header>
+                        <div class="audio-list" id="audioList"></div>
+                    </section>
+
+                    <div class="empty-state" id="mediaEmpty" hidden>
+                        <span class="empty-ico"><svg class="icon" aria-hidden="true"><use href="#i-film"></use></svg></span>
+                        <strong>No media in the libraries yet</strong>
+                        <p>Upload a video, image or audio file — or fetch one from YouTube.</p>
+                        <button class="btn btn-soft btn-sm" type="button" id="btnMediaFetch">
+                            <svg class="icon" aria-hidden="true"><use href="#i-youtube"></use></svg>
+                            Fetch media
+                        </button>
+                    </div>
+                </section>
+
+                <!-- ── Tasks ────────────────────────────────────── -->
+                <section class="view" id="view-tasks" data-view="tasks" aria-labelledby="viewTitle" hidden>
+                    <header class="view-head">
+                        <div class="view-head-text">
+                            <p class="eyebrow mono">Workspace / Tasks</p>
+                            <h2 class="page-title">Background tasks</h2>
+                            <p class="page-sub mono" id="taskSummary">No background work</p>
+                        </div>
+                        <div class="view-head-actions">
+                            <button class="btn btn-primary btn-sm" id="btnTasksFetch" type="button">
+                                <svg class="icon" aria-hidden="true"><use href="#i-youtube"></use></svg>
+                                Fetch media
+                            </button>
+                        </div>
+                    </header>
+
+                    <div class="toolbar toolbar-media">
+                        <div class="chips" id="taskChips" role="group" aria-label="Filter tasks">
+                            <button class="chip is-active" type="button" data-task-filter="all">All <span class="chip-count mono" data-task-count="all">—</span></button>
+                            <button class="chip" type="button" data-task-filter="active">Active <span class="chip-count mono" data-task-count="active">—</span></button>
+                            <button class="chip" type="button" data-task-filter="done">Completed <span class="chip-count mono" data-task-count="done">—</span></button>
+                            <button class="chip" type="button" data-task-filter="failed">Failed <span class="chip-count mono" data-task-count="failed">—</span></button>
+                        </div>
+                    </div>
+
+                    <div class="task-stack" id="taskListFull"></div>
+
+                    <div class="empty-state" id="taskEmpty" hidden>
+                        <span class="empty-ico"><svg class="icon" aria-hidden="true"><use href="#i-terminal"></use></svg></span>
+                        <strong>No tasks in this filter</strong>
+                        <p>Downloads queued with Fetch media appear here with their live logs.</p>
+                        <button class="btn btn-soft btn-sm" type="button" id="btnEmptyFetch">
+                            <svg class="icon" aria-hidden="true"><use href="#i-youtube"></use></svg>
+                            Fetch media
+                        </button>
+                    </div>
+                </section>
+
+                <!-- ── Settings ─────────────────────────────────── -->
+                <section class="view" id="view-settings" data-view="settings" aria-labelledby="viewTitle" hidden>
+                    <header class="view-head">
+                        <div class="view-head-text">
+                            <p class="eyebrow mono">Workspace / Settings</p>
+                            <h2 class="page-title">Settings</h2>
+                            <p class="page-sub">Appearance, server details and session controls.</p>
+                        </div>
+                    </header>
+
+                    <section class="panel">
+                        <header class="panel-head">
+                            <div>
+                                <h3>Appearance</h3>
+                                <p class="panel-sub mono">Stored locally in this browser</p>
+                            </div>
+                        </header>
+                        <div class="setting-block">
+                            <div class="setting-copy">
+                                <strong>Theme</strong>
+                                <p>Three hand-tuned palettes. System follows your operating system preference.</p>
+                            </div>
+                            <div class="theme-grid" id="themePicker" role="group" aria-label="Theme">
+                                <button class="theme-option" type="button" data-theme-opt="graphite" aria-pressed="false">
+                                    <span class="theme-preview tp-graphite" aria-hidden="true"><i></i><i></i><i></i></span>
+                                    <span class="theme-name">Graphite</span>
+                                    <span class="theme-desc mono">Warm dark</span>
+                                </button>
+                                <button class="theme-option" type="button" data-theme-opt="paper" aria-pressed="false">
+                                    <span class="theme-preview tp-paper" aria-hidden="true"><i></i><i></i><i></i></span>
+                                    <span class="theme-name">Paper</span>
+                                    <span class="theme-desc mono">Warm light</span>
+                                </button>
+                                <button class="theme-option" type="button" data-theme-opt="terminal" aria-pressed="false">
+                                    <span class="theme-preview tp-terminal" aria-hidden="true"><i></i><i></i><i></i></span>
+                                    <span class="theme-name">Terminal</span>
+                                    <span class="theme-desc mono">Phosphor dark</span>
+                                </button>
+                                <button class="theme-option" type="button" data-theme-opt="system" aria-pressed="false">
+                                    <span class="theme-preview tp-system" aria-hidden="true"><i></i><i></i><i></i></span>
+                                    <span class="theme-name">System</span>
+                                    <span class="theme-desc mono">Follow OS</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-copy">
+                                <strong>Reduce motion</strong>
+                                <p>Disable ambient animation and shorten transitions.</p>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="prefMotion">
+                                <span class="switch-track" aria-hidden="true"></span>
+                                <span class="sr-only">Reduce motion</span>
+                            </label>
+                        </div>
+                    </section>
+
+                    <section class="panel">
+                        <header class="panel-head">
+                            <div>
+                                <h3>Server</h3>
+                                <p class="panel-sub mono">Live connection details</p>
+                            </div>
+                        </header>
+                        <dl class="kv">
+                            <div><dt>Address</dt><dd class="mono" id="setEndpoint">—</dd></div>
+                            <div><dt>Version</dt><dd class="mono" id="setVersion">—</dd></div>
+                            <div><dt>Transport</dt><dd class="mono" id="setProtocol">—</dd></div>
+                            <div><dt>Session</dt><dd class="mono" id="setSession">—</dd></div>
+                            <div><dt>Page uptime</dt><dd class="mono" id="setUptime">—</dd></div>
+                        </dl>
+                    </section>
+
+                    <section class="panel">
+                        <header class="panel-head">
+                            <div>
+                                <h3>Workspace</h3>
+                                <p class="panel-sub mono">Fixed paths inside the storage root</p>
+                            </div>
+                        </header>
+                        <dl class="kv">
+                            <div><dt>Uploads</dt><dd class="mono">media/uploads</dd></div>
+                            <div><dt>YouTube library</dt><dd class="mono">media/yt_library</dd></div>
+                            <div><dt>Trash</dt><dd class="mono">.pycloud_trash</dd></div>
+                            <div><dt>Upload limit</dt><dd class="mono">4 GB per request</dd></div>
+                        </dl>
+                    </section>
+
+                    <section class="panel panel-danger">
+                        <header class="panel-head">
+                            <div>
+                                <h3>Session</h3>
+                                <p class="panel-sub mono">Ends this browser session</p>
+                            </div>
+                        </header>
+                        <div class="setting-row">
+                            <div class="setting-copy">
+                                <strong>Sign out</strong>
+                                <p>You will need the admin password to reconnect.</p>
+                            </div>
+                            <button class="btn btn-danger-soft btn-sm" id="btnSettingsLogout" type="button">
+                                <svg class="icon" aria-hidden="true"><use href="#i-logout"></use></svg>
+                                Sign out
+                            </button>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-copy">
+                                <strong>Reset local preferences</strong>
+                                <p>Clears theme and motion choices from this browser only.</p>
+                            </div>
+                            <button class="btn btn-soft btn-sm" id="btnResetPrefs" type="button">Reset</button>
+                        </div>
+                    </section>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- ── Command palette ─────────────────────────────────── -->
+    <div class="overlay palette-overlay" id="paletteModal" hidden>
+        <div class="palette" role="dialog" aria-modal="true" aria-label="Command palette">
+            <div class="palette-input-row">
+                <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+                <input type="text" id="paletteInput" placeholder="Search files or run a command…" autocomplete="off" spellcheck="false" aria-label="Search files or run a command">
+                <kbd class="kbd">Esc</kbd>
             </div>
-            <div class="category-tabs">
-                <button class="tab-btn active" data-cat="all">All Files</button>
-                <button class="tab-btn" data-cat="uploads">📂 Uploads</button>
-                <button class="tab-btn" data-cat="youtube">📺 YouTube</button>
-                <button class="tab-btn" data-cat="trash">🗑️ Trash</button>
+            <div class="palette-results" id="paletteResults" role="listbox" aria-label="Results"></div>
+            <div class="palette-foot mono">
+                <span><kbd class="kbd">↑</kbd><kbd class="kbd">↓</kbd> navigate</span>
+                <span><kbd class="kbd">↵</kbd> run</span>
+                <span><kbd class="kbd">Ctrl K</kbd> toggle</span>
             </div>
         </div>
+    </div>
 
-        <!-- Filter Search Bar -->
-        <div class="search-bar">
-            <span class="search-icon">🔍</span>
-            <input type="text" id="searchInput" placeholder="Search and filter files..." autocomplete="off">
-            <span id="fileCountBadge" class="file-count">0 items</span>
-        </div>
-
-        <!-- Drag & Drop Upload Zone -->
-        <section class="drop-zone" id="dropZone">
-            <input type="file" id="fileInput" multiple style="display: none;">
-            <div class="drop-content">
-                <span class="drop-icon">📤</span>
-                <p>Drag & drop files here or <button type="button" class="link-btn" id="browseBtn">browse your computer</button></p>
-                <span class="drop-hint">Max upload size: 4 GB per file • Resumable transfers</span>
-            </div>
-            <!-- Upload Progress Container -->
-            <div id="uploadProgressContainer" class="upload-progress-container" style="display: none;">
-                <div class="upload-info">
-                    <span id="uploadFilename">Uploading...</span>
-                    <span id="uploadPercentage">0%</span>
+    <!-- ── Fetch media ─────────────────────────────────────── -->
+    <div class="overlay" id="ytModal" hidden>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ytTitle">
+            <div class="dialog-head">
+                <div class="dialog-title">
+                    <span class="dialog-ico"><svg class="icon" aria-hidden="true"><use href="#i-youtube"></use></svg></span>
+                    <div>
+                        <h3 id="ytTitle">Fetch media</h3>
+                        <p class="mono">yt-dlp / background queue</p>
+                    </div>
                 </div>
-                <div class="progress-bar-bg">
-                    <div id="uploadProgressBar" class="progress-bar-fill"></div>
-                </div>
-                <button id="btnCancelUpload" class="btn btn-sm btn-danger">Cancel</button>
+                <button class="icon-btn" type="button" data-close="ytModal" aria-label="Close">
+                    <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+                </button>
             </div>
-        </section>
-
-        <!-- File List View -->
-        <section class="files-view">
-            <div class="files-header">
-                <div class="col-name">Name</div>
-                <div class="col-size">Size</div>
-                <div class="col-date">Modified</div>
-                <div class="col-actions">Actions</div>
-            </div>
-            <div class="files-list" id="filesList">
-                <div class="loading-state">Loading files...</div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Modal: Fetch Video (yt-dlp) -->
-    <div class="modal-overlay" id="ytModal" style="display: none;">
-        <div class="modal-dialog">
-            <div class="modal-header">
-                <h3>Fetch Video / Audio</h3>
-                <button class="btn-close" data-close-modal="ytModal">×</button>
-            </div>
-            <div class="modal-body">
-                <!-- Missing yt-dlp Prompt Box -->
-                <div id="ytdlpPromptBox" class="alert-box" style="display: none;">
-                    <div class="alert-header">
-                        <span class="alert-icon">⚠️</span>
+            <div class="dialog-body">
+                <div id="ytdlpPromptBox" class="notice notice-warn" hidden>
+                    <div class="notice-head">
+                        <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
                         <strong>yt-dlp is not installed</strong>
                     </div>
-                    <p class="alert-desc">
-                        Downloading and processing videos from YouTube, Vimeo, and other platforms requires the <code>yt-dlp</code> binary.
-                    </p>
-                    <p class="alert-question">
-                        Would you like PyCloud to download and configure the official standalone <code>yt-dlp</code> executable for your system automatically?
-                    </p>
-                    <div class="alert-actions">
-                        <button id="btnConfirmInstallYtDlp" class="btn btn-primary btn-sm">
-                            <span>⬇️</span> Yes, Download & Configure
+                    <p>Fetching from YouTube, Vimeo and other platforms needs the <code class="mono">yt-dlp</code> binary.</p>
+                    <p>PyCloud can download the official standalone build for this system and configure it automatically.</p>
+                    <div class="notice-actions">
+                        <button class="btn btn-primary btn-sm" id="btnConfirmInstallYtDlp" type="button">
+                            <svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>
+                            Download &amp; configure
                         </button>
-                        <button class="btn btn-secondary btn-sm" data-close-modal="ytModal">
-                            No, Cancel
-                        </button>
+                        <button class="btn btn-ghost btn-sm" type="button" data-close="ytModal">Not now</button>
                     </div>
-                    <div id="ytdlpInstallStatus" class="install-status"></div>
+                    <div class="install-status mono" id="ytdlpInstallStatus"></div>
                 </div>
 
-                <!-- Ready Download Form -->
-                <div id="ytdlpReadyForm">
-                    <p class="modal-desc">Paste a video link from YouTube, Vimeo, Soundcloud, Twitch, Reddit, TikTok, or Twitter.</p>
-                    <label for="ytUrlInput" class="input-label">Media URL:</label>
-                    <input type="url" id="ytUrlInput" placeholder="https://www.youtube.com/watch?v=..." class="form-input">
-                    <div id="ytFeedback" class="feedback-msg"></div>
-                </div>
+                <form id="ytdlpReadyForm" class="form-stack">
+                    <p class="form-desc">Paste a link from YouTube, Vimeo, SoundCloud, Twitch, Reddit, TikTok or Twitter. The download runs in the background queue.</p>
+                    <label class="field-label" for="ytUrlInput">Media URL</label>
+                    <input class="input" type="url" id="ytUrlInput" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off" spellcheck="false">
+                    <p class="form-hint mono">Destination: media/yt_library · one download runs at a time</p>
+                    <div class="feedback" id="ytFeedback" role="alert"></div>
+                </form>
             </div>
-            <div class="modal-footer" id="ytdlpModalFooter">
-                <button class="btn btn-secondary" data-close-modal="ytModal">Cancel</button>
-                <button id="btnSubmitYt" class="btn btn-primary">Download to Server</button>
+            <div class="dialog-foot" id="ytdlpModalFooter">
+                <button class="btn btn-ghost" type="button" data-close="ytModal">Cancel</button>
+                <button class="btn btn-primary" id="btnSubmitYt" type="button">
+                    <svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>
+                    Queue download
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Modal: Cinema Mode Media Player -->
-    <div class="modal-overlay cinema-modal" id="cinemaModal" style="display: none;">
-        <div class="cinema-dialog">
-            <div class="cinema-header">
-                <h3 id="cinemaTitle">Media Player</h3>
-                <div class="cinema-actions">
-                    <a id="cinemaDlBtn" href="#" class="btn btn-sm btn-secondary" download>⬇ Download</a>
-                    <button class="btn-close" data-close-modal="cinemaModal">×</button>
+    <!-- ── Player ──────────────────────────────────────────── -->
+    <div class="overlay player-overlay" id="playerModal" hidden>
+        <div class="player" role="dialog" aria-modal="true" aria-labelledby="cinemaTitle">
+            <header class="player-head">
+                <div class="player-title-wrap">
+                    <span class="badge badge-media mono" id="playerKind">VIDEO</span>
+                    <h3 id="cinemaTitle">Media player</h3>
+                    <p class="mono" id="playerMeta">—</p>
+                </div>
+                <div class="player-actions">
+                    <a class="btn btn-soft btn-sm" id="cinemaDlBtn" href="#" download>
+                        <svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>
+                        Download
+                    </a>
+                    <button class="icon-btn" type="button" data-close="playerModal" aria-label="Close player">
+                        <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+                    </button>
+                </div>
+            </header>
+            <div class="player-stage" id="cinemaContent"></div>
+        </div>
+    </div>
+
+    <!-- ── Confirm dialog ──────────────────────────────────── -->
+    <div class="overlay" id="confirmModal" hidden>
+        <div class="dialog dialog-sm" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
+            <div class="dialog-head">
+                <div class="dialog-title">
+                    <span class="dialog-ico dialog-ico-danger"><svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg></span>
+                    <div>
+                        <h3 id="confirmTitle">Confirm</h3>
+                        <p class="mono" id="confirmKicker">This action needs confirmation</p>
+                    </div>
+                </div>
+                <button class="icon-btn" type="button" data-close="confirmModal" aria-label="Close">
+                    <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+                </button>
+            </div>
+            <div class="dialog-body">
+                <p class="dialog-text" id="confirmMessage"></p>
+                <div class="form-stack" id="confirmInputWrap" hidden>
+                    <label class="field-label" for="confirmInput">Type <code class="mono" id="confirmExpected"></code> to confirm</label>
+                    <input class="input" type="text" id="confirmInput" autocomplete="off" spellcheck="false">
                 </div>
             </div>
-            <div class="cinema-content" id="cinemaContent">
-                <!-- Dynamically loaded video, audio, or image -->
+            <div class="dialog-foot">
+                <button class="btn btn-ghost" id="btnConfirmCancel" type="button">Cancel</button>
+                <button class="btn btn-danger" id="btnConfirmOk" type="button">Delete</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal: Rename Item -->
-    <div class="modal-overlay" id="renameModal" style="display: none;">
-        <div class="modal-dialog">
-            <div class="modal-header">
-                <h3>Rename Item</h3>
-                <button class="btn-close" data-close-modal="renameModal">×</button>
+    <!-- ── Rename ──────────────────────────────────────────── -->
+    <div class="overlay" id="renameModal" hidden>
+        <form class="dialog dialog-sm" id="renameForm" role="dialog" aria-modal="true" aria-labelledby="renameTitle">
+            <div class="dialog-head">
+                <div class="dialog-title">
+                    <span class="dialog-ico"><svg class="icon" aria-hidden="true"><use href="#i-pencil"></use></svg></span>
+                    <div>
+                        <h3 id="renameTitle">Rename item</h3>
+                        <p class="mono">Files and folders</p>
+                    </div>
+                </div>
+                <button class="icon-btn" type="button" data-close="renameModal" aria-label="Close">
+                    <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+                </button>
             </div>
-            <div class="modal-body">
-                <label for="renameInput" class="input-label">New Name:</label>
-                <input type="text" id="renameInput" class="form-input">
+            <div class="dialog-body">
+                <label class="field-label" for="renameInput">New name</label>
+                <input class="input" type="text" id="renameInput" autocomplete="off" spellcheck="false">
                 <input type="hidden" id="renameTargetOldPath">
-                <div id="renameFeedback" class="feedback-msg"></div>
+                <div class="feedback" id="renameFeedback" role="alert"></div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-close-modal="renameModal">Cancel</button>
-                <button id="btnSubmitRename" class="btn btn-primary">Rename</button>
+            <div class="dialog-foot">
+                <button class="btn btn-ghost" type="button" data-close="renameModal">Cancel</button>
+                <button class="btn btn-primary" id="btnSubmitRename" type="submit">Rename</button>
             </div>
+        </form>
+    </div>
+
+    <!-- ── New folder ──────────────────────────────────────── -->
+    <div class="overlay" id="mkdirModal" hidden>
+        <form class="dialog dialog-sm" id="mkdirForm" role="dialog" aria-modal="true" aria-labelledby="mkdirTitle">
+            <div class="dialog-head">
+                <div class="dialog-title">
+                    <span class="dialog-ico"><svg class="icon" aria-hidden="true"><use href="#i-folder"></use></svg></span>
+                    <div>
+                        <h3 id="mkdirTitle">New folder</h3>
+                        <p class="mono" id="mkdirLocation">Inside root</p>
+                    </div>
+                </div>
+                <button class="icon-btn" type="button" data-close="mkdirModal" aria-label="Close">
+                    <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+                </button>
+            </div>
+            <div class="dialog-body">
+                <label class="field-label" for="mkdirInput">Folder name</label>
+                <input class="input" type="text" id="mkdirInput" placeholder="New folder" autocomplete="off" spellcheck="false">
+                <div class="feedback" id="mkdirFeedback" role="alert"></div>
+            </div>
+            <div class="dialog-foot">
+                <button class="btn btn-ghost" type="button" data-close="mkdirModal">Cancel</button>
+                <button class="btn btn-primary" id="btnSubmitMkdir" type="submit">Create folder</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ── Login ───────────────────────────────────────────── -->
+    <div class="overlay auth-overlay" id="loginModal" hidden>
+        <div class="auth-brand">
+            <div class="auth-brand-inner">
+                <div class="auth-brand-top">
+                    <span class="brand-mark brand-mark-lg" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M6.5 18h10.8a4 4 0 0 0 .5-8A5.7 5.7 0 0 0 7.1 11 3.6 3.6 0 0 0 6.5 18Z"/>
+                            <circle cx="17.6" cy="6.4" r="1.8" fill="currentColor" stroke="none"/>
+                        </svg>
+                    </span>
+                    <span class="brand-text"><strong>PyCloud</strong><span class="brand-ver mono">v2.0</span></span>
+                </div>
+                <p class="eyebrow mono">Self-hosted personal cloud</p>
+                <h2 class="auth-headline">Your files. Your hardware.<br><em>Your rules.</em></h2>
+                <p class="auth-lead">A single static binary for files, media and background downloads. No cloud account, no telemetry, no build step.</p>
+                <ul class="auth-features">
+                    <li><span class="mono">01</span><div><strong>Private by default</strong><p>Everything stays on this machine, behind one admin password.</p></div></li>
+                    <li><span class="mono">02</span><div><strong>Built for a home lab</strong><p>Runs on a VPS, a Raspberry Pi or a spare desktop.</p></div></li>
+                    <li><span class="mono">03</span><div><strong>Files and cinema</strong><p>Manage folders and stream video with subtitles in the browser.</p></div></li>
+                </ul>
+                <p class="auth-foot mono"><span class="dot dot-ok" aria-hidden="true"></span> Server online <span class="sep">·</span> <span id="authVersion">v2.0.0</span></p>
+            </div>
+        </div>
+        <div class="auth-panel">
+            <form class="auth-card" id="loginForm">
+                <p class="eyebrow mono">Session locked</p>
+                <h2>Sign in</h2>
+                <p class="auth-card-lead">Enter the admin password for this server.</p>
+                <label class="field-label" for="loginPassword">Password</label>
+                <input class="input" type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+                <div class="feedback" id="loginFeedback" role="alert"></div>
+                <button class="btn btn-primary btn-block" id="btnSubmitLogin" type="submit">Unlock PyCloud</button>
+                <p class="auth-note mono">PBKDF2 password · CSRF-protected session</p>
+            </form>
         </div>
     </div>
 
-    <!-- Modal: New Folder -->
-    <div class="modal-overlay" id="mkdirModal" style="display: none;">
-        <div class="modal-dialog">
-            <div class="modal-header">
-                <h3>Create New Folder</h3>
-                <button class="btn-close" data-close-modal="mkdirModal">×</button>
+    <!-- ── First-run setup ─────────────────────────────────── -->
+    <div class="overlay auth-overlay" id="setupModal" hidden>
+        <div class="auth-brand">
+            <div class="auth-brand-inner">
+                <div class="auth-brand-top">
+                    <span class="brand-mark brand-mark-lg" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M6.5 18h10.8a4 4 0 0 0 .5-8A5.7 5.7 0 0 0 7.1 11 3.6 3.6 0 0 0 6.5 18Z"/>
+                            <circle cx="17.6" cy="6.4" r="1.8" fill="currentColor" stroke="none"/>
+                        </svg>
+                    </span>
+                    <span class="brand-text"><strong>PyCloud</strong><span class="brand-ver mono">v2.0</span></span>
+                </div>
+                <p class="eyebrow mono">First run</p>
+                <h2 class="auth-headline">One password.<br><em>One private cloud.</em></h2>
+                <p class="auth-lead">Choose the admin password now. It is hashed with PBKDF2 and never stored in plain text.</p>
+                <ul class="auth-features">
+                    <li><span class="mono">01</span><div><strong>Minimum 8 characters</strong><p>Longer passphrases are better; there is no recovery reset.</p></div></li>
+                    <li><span class="mono">02</span><div><strong>Single admin account</strong><p>This server is designed for one operator, not a team.</p></div></li>
+                    <li><span class="mono">03</span><div><strong>Stored locally</strong><p>The hash lives in <code class="mono">config.json</code> beside the binary.</p></div></li>
+                </ul>
+                <p class="auth-foot mono"><span class="dot dot-warn" aria-hidden="true"></span> Setup required</p>
             </div>
-            <div class="modal-body">
-                <label for="mkdirInput" class="input-label">Folder Name:</label>
-                <input type="text" id="mkdirInput" placeholder="Folder name..." class="form-input">
-                <div id="mkdirFeedback" class="feedback-msg"></div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-close-modal="mkdirModal">Cancel</button>
-                <button id="btnSubmitMkdir" class="btn btn-primary">Create</button>
-            </div>
+        </div>
+        <div class="auth-panel">
+            <form class="auth-card" id="setupForm">
+                <p class="eyebrow mono">Initial setup</p>
+                <h2>Create admin password</h2>
+                <p class="auth-card-lead">This protects every file and action on the server.</p>
+                <label class="field-label" for="setupPassword">Password</label>
+                <input class="input" type="password" id="setupPassword" placeholder="At least 8 characters" autocomplete="new-password">
+                <label class="field-label" for="setupConfirmPassword">Confirm password</label>
+                <input class="input" type="password" id="setupConfirmPassword" placeholder="Repeat password" autocomplete="new-password">
+                <div class="feedback" id="setupFeedback" role="alert"></div>
+                <button class="btn btn-primary btn-block" id="btnSubmitSetup" type="submit">Complete setup</button>
+                <p class="auth-note mono">PBKDF2 password · CSRF-protected session</p>
+            </form>
         </div>
     </div>
 
-    <!-- Modal: Login Required -->
-    <div class="modal-overlay auth-modal" id="loginModal" style="display: none;">
-        <div class="modal-dialog">
-            <div class="modal-header">
-                <h3>🔒 PyCloud Authentication</h3>
-            </div>
-            <div class="modal-body">
-                <p class="modal-desc">Enter your admin password to access your private cloud.</p>
-                <label for="loginPassword" class="input-label">Password:</label>
-                <input type="password" id="loginPassword" placeholder="••••••••" class="form-input" autofocus>
-                <div id="loginFeedback" class="feedback-msg"></div>
-            </div>
-            <div class="modal-footer">
-                <button id="btnSubmitLogin" class="btn btn-primary" style="width: 100%;">Sign In</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal: Initial First-Run Setup -->
-    <div class="modal-overlay auth-modal" id="setupModal" style="display: none;">
-        <div class="modal-dialog">
-            <div class="modal-header">
-                <h3>🚀 Initial Setup Wizard</h3>
-            </div>
-            <div class="modal-body">
-                <p class="modal-desc">Welcome to PyCloud v2.0! Establish an admin password (minimum 8 characters) to secure your server.</p>
-                <label for="setupPassword" class="input-label">Admin Password:</label>
-                <input type="password" id="setupPassword" placeholder="••••••••" class="form-input">
-                <label for="setupConfirmPassword" class="input-label" style="margin-top: 10px;">Confirm Password:</label>
-                <input type="password" id="setupConfirmPassword" placeholder="••••••••" class="form-input">
-                <div id="setupFeedback" class="feedback-msg"></div>
-            </div>
-            <div class="modal-footer">
-                <button id="btnSubmitSetup" class="btn btn-primary" style="width: 100%;">Complete Setup & Open Cloud</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Toast Notifications -->
-    <div id="toastContainer" class="toast-container"></div>
+    <!-- ── Toasts ──────────────────────────────────────────── -->
+    <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="false"></div>
 
     <script src="/static/js/app.js"></script>
 </body>
