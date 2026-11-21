@@ -127,6 +127,8 @@ go test -run TestLoginAndAuthProtection -v ./...
 
 The suite covers password hashing and verification, the path jail, session management, the status/setup/login flow, upload deduplication, and yt-dlp URL validation. When you add an endpoint, add a case to `server_test.go` (it spins up the real handler stack).
 
+`tasks_test.go` drives the task manager with a stub `yt-dlp` shell script. It exists to guard one specific hazard: **never call `Task.AddLog` while holding `Task.mu`** — `AddLog` takes that same lock, `sync.Mutex` is not reentrant, and the resulting deadlock freezes the worker *and* every `/api/tasks` request (including `GetTasks`, which holds `tm.mu.RLock`). `TestTaskCompletionDoesNotDeadlock` and `TestCancelTaskDoesNotDeadlock` fail loudly if that pattern returns.
+
 ## Debugging
 
 **Request logging.** Every request is logged by `LoggingMiddleware` with method, path, status, duration, and bytes written. This is your first stop:
@@ -172,6 +174,7 @@ Then set `"yt_dlp_path": "/tmp/yt-dlp-stub"` in `config.json` and restart. `/api
 - **Icons** live in the inline SVG sprite at the top of `index.html` (`<symbol id="i-name">`). Reference them with `<use href="#i-name">`.
 - **Adding a view** means: a `<section data-view="x">` in `index.html`, an entry in the `VIEW_TITLES` map in `app.js`, a nav link with `data-nav="x"`, and a branch in `renderView`/`onViewEnter`.
 - **Responsive breakpoints** are at 1180px (icon rail), 1020px (2-column stats), 900px (off-canvas sidebar), 760px, 640px (bottom-sheet dialogs / stacked file rows), and 420px.
+- **Connectivity is tracked centrally, in `apiFetch` only.** A rejected `fetch` (excluding aborts) or a gateway status (502/503/504) counts as a failure; any other HTTP reply counts as success. Do not call `noteRequestFailure()` from feature catch blocks — a 404/400 from the API means the server is *up*, and counting those produced false "server unreachable" banners.
 
 ## Where things live at runtime
 

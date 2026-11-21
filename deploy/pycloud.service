@@ -1,0 +1,36 @@
+# PyCloud as a systemd service.
+#
+#   1. Adjust User / Group / WorkingDirectory / ExecStart / -root if your paths differ.
+#   2. Install and start it:
+#        sudo cp deploy/pycloud.service /etc/systemd/system/pycloud.service
+#        sudo systemctl daemon-reload
+#        sudo systemctl enable --now pycloud
+#
+# config.json and certs/ are created in WorkingDirectory, so point it at the
+# directory you have been running PyCloud from — otherwise it generates a new
+# config (and a new admin password prompt) somewhere else.
+#
+# -bind 127.0.0.1 keeps PyCloud reachable only by the reverse proxy; there is no
+# reason to expose 8443 once Caddy is in front.
+
+[Unit]
+Description=PyCloud self-hosted personal cloud
+Documentation=https://github.com/Gaurav5189/PyCloud-Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=admin
+Group=admin
+WorkingDirectory=/home/admin/PyCloud-Server
+ExecStart=/home/admin/PyCloud-Server/dist/pycloud-linux-amd64 -bind 127.0.0.1 -port 8443 -root /home/admin/storage
+Restart=on-failure
+RestartSec=3
+
+# Light hardening — PyCloud needs no special privileges.
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

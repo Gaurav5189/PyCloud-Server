@@ -263,6 +263,7 @@ Requests pass through logging, security headers, CSRF, and session-auth middlewa
 - **Trash is never purged automatically.** `trash_retention_days` is present in the config but not enforced yet; empty Trash yourself.
 - **In-browser playback depends on codec support.** MP4/WebM/MP3/FLAC/images play; MKV, AVI, and some MOV files usually cannot be decoded by browsers, so the player offers a download instead.
 - **Downloads are serialized.** Two workers, a 50-item queue, a 2-hour per-job timeout, and 100 tasks of history. `yt-dlp` (installable in-app) and `ffmpeg` (optional) are required for the fetch feature only.
+- **Task history is in-memory.** Restarting PyCloud clears the task list; anything already downloaded stays on disk under `media/yt_library`.
 - **Uploads are not resumable** and directories cannot be uploaded, only individual files. Downloads *do* support HTTP Range.
 - **The Windows binary is unsigned**, so SmartScreen will warn on first launch.
 

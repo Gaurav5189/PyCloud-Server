@@ -1,0 +1,45 @@
+╔═══════════════════════════════════════════╗
+║                                           ║
+║   New update available! 0.9.5 -> 0.9.6    ║
+║          Run: coderabbit update           ║
+║                                           ║
+╚═══════════════════════════════════════════╝
+
+
+   !   Excluded 10 unsupported binary file(s): assets/image01.png,
+       assets/image02.png, dist/pycloud-darwin-amd64, dist/pycloud-darwin-arm64,
+       dist/pycloud-linux-amd64, dist/pycloud-linux-arm64,
+       frontend/fonts/PlexMono-400.woff2, frontend/fonts/PlexMono-500.woff2,
+       frontend/fonts/PlexMono-600.woff2, frontend/fonts/PlexSans-latin.woff2
+
+────────────────────────────────────────
+CodeRabbit Review
+
+Diff      : tracked changes
+Compare   : main → main
+Directory : PyCloud-Server
+────────────────────────────────────────
+
+(\(\
+(• .•)  The first 90% of the code accounts for the first 90% of the development time. The remaining 10% of the code accounts for the other 90% of the development time. - Tom Cargill
+
+
+────────────────────────────────────────
+Review complete
+Review completed
+No findings ✔
+
+30 files reviewed:
+  - .gitignore
+  - INSTRUCTIONS.md
+  - Makefile
+  - README.md
+  - auth_handlers.go
+  - config.example.json
+  - config.go
+  - deploy/README.md
+  - deploy/install-caddy.sh
+  - files.go
+  ... and 20 more files
+Excluded unsupported binary files: assets/image01.png, assets/image02.png, dist/pycloud-darwin-amd64, dist/pycloud-darwin-arm64, dist/pycloud-linux-amd64, dist/pycloud-linux-arm64, frontend/fonts/PlexMono-400.woff2, frontend/fonts/PlexMono-500.woff2, frontend/fonts/PlexMono-600.woff2, frontend/fonts/PlexSans-latin.woff2
+────────────────────────────────────────

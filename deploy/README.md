@@ -63,6 +63,21 @@ sudo systemctl restart caddy
 
 Then browse to `https://<your-hostname>`.
 
+## Keeping both running
+
+`deploy/pycloud.service` is a systemd unit that starts PyCloud at boot and
+restarts it on crash. Edit the paths if yours differ, then:
+
+```bash
+sudo cp deploy/pycloud.service /etc/systemd/system/pycloud.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now pycloud
+systemctl status pycloud caddy --no-pager
+```
+
+Because `WorkingDirectory` is where `config.json` and `certs/` live, keep it
+pointed at the same directory you ran PyCloud from manually.
+
 ## Troubleshooting
 
 | Symptom | Check |

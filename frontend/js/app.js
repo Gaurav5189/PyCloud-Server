@@ -85,7 +85,21 @@
             if (csrf) opts.headers['X-CSRF-Token'] = csrf;
         }
 
-        const res = await fetch(url, opts);
+        let res;
+        try {
+            res = await fetch(url, opts);
+        } catch (err) {
+            // A rejected fetch is the only real signal that the server is
+            // unreachable. An abort is a deliberate cancellation, not an outage.
+            if (!(err && err.name === 'AbortError')) noteRequestFailure();
+            throw err;
+        }
+
+        // Any HTTP reply — even 4xx — proves the server is up. Only gateway
+        // errors mean the upstream is actually down.
+        if (res.status === 502 || res.status === 503 || res.status === 504) noteRequestFailure();
+        else noteRequestSuccess();
+
         const isAuthEndpoint = url.indexOf('/api/login') === 0 ||
             url.indexOf('/api/setup') === 0 ||
             url.indexOf('/api/status') === 0 ||
@@ -747,8 +761,13 @@
         if (!state.connected) setConnection(true);
     }
 
+    // Only genuine transport failures (a rejected fetch) or gateway errors should
+    // reach here — never an ordinary HTTP error status. A 4xx/5xx reply proves
+    // the server is reachable (e.g. a 404 when a library folder does not exist
+    // yet), and counting it used to flash "server unreachable" mid-session.
     function noteRequestFailure(err) {
-        if (handleAuthFailure(err)) return;
+        if (err && err.name === 'AbortError') return;
+        if (err && handleAuthFailure(err)) return;
         state.connFails += 1;
         if (state.connFails >= 2) setConnection(false);
     }
@@ -838,7 +857,7 @@
             noteRequestSuccess();
             renderStats(data);
         } catch (err) {
-            noteRequestFailure(err);
+            /* connectivity is reported centrally by apiFetch */
         }
     }
     /* ── Library helpers ───────────────────────────────────────────────── */
@@ -1039,7 +1058,6 @@
         } catch (err) {
             if (token !== state.filesToken) return;
             if (handleAuthFailure(err)) return;
-            noteRequestFailure(err);
             const list = $('#filesList');
             if (list) {
                 clear(list);
@@ -1287,7 +1305,6 @@
             loadLibraries(true);
         } catch (err) {
             if (handleAuthFailure(err)) return;
-            noteRequestFailure(err);
             if (feedback) feedback.textContent = err.message || 'Rename failed.';
         } finally {
             if (button) button.disabled = false;
@@ -1342,7 +1359,6 @@
             loadLibraries(true);
         } catch (err) {
             if (handleAuthFailure(err)) return;
-            noteRequestFailure(err);
             if (feedback) feedback.textContent = err.message || 'Could not create the folder.';
         } finally {
             if (button) button.disabled = false;
@@ -1381,7 +1397,6 @@
             loadLibraries(true);
         } catch (err) {
             if (handleAuthFailure(err)) return;
-            noteRequestFailure(err);
             toast(err.message || 'Delete failed.', 'error');
         }
     }
@@ -1627,7 +1642,6 @@
             noteRequestSuccess();
         } catch (err) {
             if (handleAuthFailure(err)) return;
-            noteRequestFailure(err);
             if (summary) summary.textContent = 'Could not scan the media libraries.';
         } finally {
             state.mediaLoading = false;
@@ -2016,7 +2030,14 @@
             if (!res.ok) throw new Error('Could not load tasks');
             const data = await res.json();
             const tasks = Array.isArray(data) ? data : [];
-            const signature = tasks.map((task) => task.id + ':' + task.status + ':' + (task.logs ? task.logs.length : 0)).join('|');
+            // The log tail is part of the signature: the server caps logs at 50
+            // entries, so counting them alone would stop detecting updates once
+            // the cap is reached and the list would look frozen.
+            const signature = tasks.map((task) => {
+                const logs = Array.isArray(task.logs) ? task.logs : [];
+                const tail = logs.length ? logs[logs.length - 1] : '';
+                return task.id + ':' + task.status + ':' + logs.length + ':' + tail;
+            }).join('|');
             const changed = signature !== state.tasksHash;
 
             detectTaskTransitions(tasks);
@@ -2028,7 +2049,7 @@
             }
             noteRequestSuccess();
         } catch (err) {
-            noteRequestFailure(err);
+            /* connectivity is reported centrally by apiFetch */
         }
     }
 
@@ -2159,6 +2180,20 @@
         const container = $('#taskListFull');
         if (!container) return;
         const openIds = new Set(state.openLogIds);
+
+        // Remember log scroll positions so a re-render (which rebuilds the list)
+        // does not yank the view: keep following the bottom if it was pinned
+        // there, otherwise restore the previous offset.
+        const scrollState = {};
+        $$('.task-card', container).forEach((card) => {
+            const pre = $('.task-logs', card);
+            if (!pre) return;
+            scrollState[card.dataset.taskId] = {
+                top: pre.scrollTop,
+                atBottom: pre.scrollHeight - pre.scrollTop - pre.clientHeight < 8
+            };
+        });
+
         clear(container);
 
         const filter = TASK_FILTERS[state.tasksFilter] || TASK_FILTERS.all;
@@ -2170,6 +2205,14 @@
 
         tasks.forEach((task) => {
             container.appendChild(buildTaskCard(task, openIds.has(task.id)));
+        });
+
+        $$('.task-card', container).forEach((card) => {
+            const pre = $('.task-logs', card);
+            if (!pre) return;
+            const saved = scrollState[card.dataset.taskId];
+            if (saved && !saved.atBottom) pre.scrollTop = saved.top;
+            else pre.scrollTop = pre.scrollHeight;
         });
     }
 
@@ -2245,7 +2288,6 @@
             updateTasks(true);
         } catch (err) {
             if (handleAuthFailure(err)) return;
-            noteRequestFailure(err);
             toast('Could not cancel the task.', 'error');
         }
     }
@@ -2270,7 +2312,6 @@
             updateTasks(true);
         } catch (err) {
             if (handleAuthFailure(err)) return;
-            noteRequestFailure(err);
             toast('Could not retry the task.', 'error');
         }
     }
@@ -2392,7 +2433,6 @@
             updateTasks(true);
         } catch (err) {
             if (handleAuthFailure(err)) return;
-            noteRequestFailure(err);
             if (feedback) feedback.textContent = err.message || 'Could not queue the download.';
         } finally {
             if (button) button.disabled = false;
@@ -2421,7 +2461,6 @@
             noteRequestSuccess();
         } catch (err) {
             if (handleAuthFailure(err)) return;
-            noteRequestFailure(err);
             const container = $('#recentFiles');
             if (container) {
                 clear(container);
@@ -2639,8 +2678,17 @@
 
     function startPolling() {
         stopPolling();
-        state.pollStats = setInterval(() => { if (!document.hidden) updateStats(); }, 5000);
-        state.pollTasks = setInterval(() => { if (!document.hidden) updateTasks(false); }, 2600);
+        state.pollStats = setInterval(() => {
+            if (document.hidden || state.statsInFlight) return;
+            state.statsInFlight = true;
+            updateStats().finally(() => { state.statsInFlight = false; });
+        }, 5000);
+        state.pollTasks = setInterval(() => {
+            // Never stack requests: if one is still in flight, skip this tick.
+            if (document.hidden || state.tasksInFlight) return;
+            state.tasksInFlight = true;
+            updateTasks(false).finally(() => { state.tasksInFlight = false; });
+        }, 2600);
     }
 
     function stopPolling() {
@@ -2851,7 +2899,14 @@
             openMkdir();
         });
         const retry = $('#btnRetryConn');
-        if (retry) retry.addEventListener('click', () => { refreshCurrentView(); updateStats(); });
+        if (retry) retry.addEventListener('click', async () => {
+            // Probe the server directly — that is what actually sets/clears the banner.
+            if (await checkServerStatus()) {
+                refreshCurrentView();
+                updateStats();
+                updateTasks(true);
+            }
+        });
         const refreshOverview = $('#btnRefreshOverview');
         if (refreshOverview) refreshOverview.addEventListener('click', () => loadOverview(true));
         const refreshMedia = $('#btnRefreshMedia');

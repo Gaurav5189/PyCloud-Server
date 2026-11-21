@@ -54,6 +54,17 @@ func (t *Task) AddLog(msg string) {
 	}
 }
 
+// setFailed marks the task as failed and releases its cancel function. Call it
+// without holding task.mu.
+func (t *Task) setFailed(cancel context.CancelFunc) {
+	t.mu.Lock()
+	t.Status = StatusFailed
+	t.mu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+}
+
 type TaskManager struct {
 	mu         sync.RWMutex
 	tasks      []*Task
@@ -82,36 +93,37 @@ func NewTaskManager(ytDlpPath, outputDir string, maxWorkers, queueSize int) *Tas
 
 func (tm *TaskManager) worker() {
 	for task := range tm.queue {
-		if task.Status == StatusCancelled {
+		task.mu.Lock()
+		cancelled := task.Status == StatusCancelled
+		task.mu.Unlock()
+		if cancelled {
 			continue
 		}
 
+		// 2-hour timeout context for execution
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
+
 		task.mu.Lock()
 		task.Status = StatusRunning
+		task.cancelFunc = cancel
 		task.mu.Unlock()
 
 		task.AddLog(fmt.Sprintf("Starting %s download...", task.Type))
-
-		// 2-hour timeout context for execution
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
-		task.cancelFunc = cancel
 
 		cmd := exec.CommandContext(ctx, task.cmdArgs[0], task.cmdArgs[1:]...)
 
 		// Capture stdout and stderr merged
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
+			task.setFailed(cancel)
 			task.AddLog(fmt.Sprintf("Failed to initialize stdout pipe: %v", err))
-			task.Status = StatusFailed
-			cancel()
 			continue
 		}
 		cmd.Stderr = cmd.Stdout
 
 		if err := cmd.Start(); err != nil {
+			task.setFailed(cancel)
 			task.AddLog(fmt.Sprintf("Error starting process: %v", err))
-			task.Status = StatusFailed
-			cancel()
 			continue
 		}
 
@@ -126,17 +138,26 @@ func (tm *TaskManager) worker() {
 		waitErr := cmd.Wait()
 		cancel()
 
+		// IMPORTANT: never hold task.mu while calling task.AddLog — AddLog takes
+		// the same lock, and sync.Mutex is not reentrant (this used to deadlock
+		// the worker, and with it every /api/tasks request, the moment a job
+		// finished).
 		task.mu.Lock()
 		if task.Status != StatusCancelled {
 			if waitErr == nil {
 				task.Status = StatusCompleted
-				task.AddLog("Task completed successfully.")
 			} else {
 				task.Status = StatusFailed
-				task.AddLog(fmt.Sprintf("Process exited with error: %v", waitErr))
 			}
 		}
+		finished := task.Status
 		task.mu.Unlock()
+
+		if finished == StatusCompleted {
+			task.AddLog("Task completed successfully.")
+		} else if finished == StatusFailed {
+			task.AddLog(fmt.Sprintf("Process exited with error: %v", waitErr))
+		}
 	}
 }
 
@@ -318,7 +339,7 @@ func (tm *TaskManager) AddDownloadTask(jobType, videoURL string) (string, error)
 		"--restrict-filenames", // Prevent dangerous characters in filenames
 		"--no-playlist",        // Prevent downloading entire multi-gigabyte playlists
 		"-o", outputTemplate,
-		"--",                   // End of command flags - URL follows
+		"--", // End of command flags - URL follows
 		parsedURL.String(),
 	}
 
@@ -344,7 +365,7 @@ func (tm *TaskManager) AddDownloadTask(jobType, videoURL string) (string, error)
 	case tm.queue <- task:
 		return taskID, nil
 	default:
-		task.Status = StatusFailed
+		task.setFailed(nil)
 		task.AddLog("Download queue is full. Try again later.")
 		return "", errors.New("task queue is full")
 	}
@@ -356,19 +377,30 @@ func (tm *TaskManager) CancelTask(id string) bool {
 	defer tm.mu.RUnlock()
 
 	for _, t := range tm.tasks {
-		if t.ID == id {
-			t.mu.Lock()
-			if t.Status == StatusRunning && t.cancelFunc != nil {
-				t.cancelFunc()
-				t.Status = StatusCancelled
-				t.AddLog("Cancelled by user.")
-			} else if t.Status == StatusWaiting {
-				t.Status = StatusCancelled
-				t.AddLog("Cancelled while waiting in queue.")
-			}
-			t.mu.Unlock()
-			return true
+		if t.ID != id {
+			continue
 		}
+
+		t.mu.Lock()
+		cancelFn := t.cancelFunc
+		changed := false
+		if t.Status == StatusRunning && cancelFn != nil {
+			t.Status = StatusCancelled
+			changed = true
+		} else if t.Status == StatusWaiting {
+			t.Status = StatusCancelled
+			changed = true
+		}
+		t.mu.Unlock()
+
+		// Called outside the lock; AddLog would otherwise deadlock on t.mu.
+		if cancelFn != nil {
+			cancelFn()
+		}
+		if changed {
+			t.AddLog("Cancelled by user.")
+		}
+		return true
 	}
 	return false
 }
