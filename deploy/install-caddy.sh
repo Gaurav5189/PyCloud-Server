@@ -37,11 +37,26 @@ case "$(uname -m)" in
 esac
 
 if [ ! -x /usr/local/bin/caddy ]; then
-  echo "Downloading Caddy for linux/$ARCH ..."
-  curl -fsSL "https://caddyserver.com/api/download?os=linux&arch=$ARCH" -o /tmp/caddy.tgz
-  tar -xzf /tmp/caddy.tgz -C /usr/local/bin caddy
-  chmod 0755 /usr/local/bin/caddy
-  rm -f /tmp/caddy.tgz
+  # caddyserver.com's download API now requires an account (it answers 401),
+  # so pull the official prebuilt binary straight from GitHub Releases.
+  CADDY_VERSION="${CADDY_VERSION:-$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
+    https://github.com/caddyserver/caddy/releases/latest | sed 's#.*/tag/v##')}"
+  case "$CADDY_VERSION" in
+    '' | */*)
+      echo "Could not determine the latest Caddy version from GitHub." >&2
+      echo "Set it explicitly and retry, e.g.:  CADDY_VERSION=2.11.9 sudo -E $0 $DOMAIN" >&2
+      exit 1
+      ;;
+  esac
+
+  TARBALL="caddy_${CADDY_VERSION}_linux_${ARCH}.tar.gz"
+  echo "Downloading Caddy v${CADDY_VERSION} (${TARBALL}) ..."
+  curl -fL --retry 3 \
+    "https://github.com/caddyserver/caddy/releases/download/v${CADDY_VERSION}/${TARBALL}" \
+    -o /tmp/caddy.tgz
+  tar -xzf /tmp/caddy.tgz -C /tmp caddy
+  install -m 0755 /tmp/caddy /usr/local/bin/caddy
+  rm -f /tmp/caddy.tgz /tmp/caddy
 fi
 
 # --- 2. service account and directories -------------------------------------

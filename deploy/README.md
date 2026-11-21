@@ -41,6 +41,11 @@ On EC2, an **Elastic IP** keeps the public IP (and therefore the nip.io name) st
 sudo ./install-caddy.sh 203.0.113.10.nip.io
 ```
 
+> The Caddy binary is fetched from GitHub Releases. (Caddy's own
+> `caddyserver.com/api/download` endpoint now requires an account and answers
+> **401**, so it is not used.) To pin a version instead of resolving the latest:
+> `CADDY_VERSION=2.11.9 sudo -E ./install-caddy.sh 203.0.113.10.nip.io`.
+
 The script downloads the Caddy binary, writes `/etc/caddy/Caddyfile` and a
 `caddy.service` systemd unit, and starts it. The domain is read from
 `/etc/caddy/caddy.env`, so you can change it later without touching the Caddyfile:
