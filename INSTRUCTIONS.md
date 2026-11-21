@@ -162,6 +162,8 @@ chmod +x /tmp/yt-dlp-stub
 
 Then set `"yt_dlp_path": "/tmp/yt-dlp-stub"` in `config.json` and restart. `/api/tasks/ytdlp-status` reports it as installed, so you can test queueing, logs, cancel, and retry without network access.
 
+**yt-dlp on a cloud host.** YouTube blocks datacenter IPs and now needs a JavaScript runtime, which is why downloads that work on a laptop fail on a VPS with `Sign in to confirm you're not a bot` or `No supported JavaScript runtime could be found`. Both are handled through config: `yt_dlp_cookies` (path to a Netscape `cookies.txt`) becomes `--cookies`, and `yt_dlp_extra_args` (e.g. `["--js-runtimes", "deno"]`) is appended as-is. `TaskManager.ytDlpCommand` in `tasks.go` is the single place that assembles the argv; `tasks_test.go` pins the ordering (shared flags → `--cookies` → extra args → `-o` → `--` → URL) so the URL can never be displaced.
+
 **Frontend errors.** Open the browser console. The strict CSP (`script-src 'self'`) means inline scripts and CDNs are blocked by design — all JavaScript must live in `frontend/js/*.js`. If a request 401s, the client shows the login dialog; a 428 shows the setup dialog.
 
 **Storage sanity.** The jail refuses paths outside `root_dir`. If an operation 403s, check `SafePathJail` and confirm the path is relative to the storage root and not a symlink pointing out of it.

@@ -66,21 +66,25 @@ func (t *Task) setFailed(cancel context.CancelFunc) {
 }
 
 type TaskManager struct {
-	mu         sync.RWMutex
-	tasks      []*Task
-	queue      chan *Task
-	maxHistory int
-	ytDlpPath  string
-	outputDir  string
+	mu          sync.RWMutex
+	tasks       []*Task
+	queue       chan *Task
+	maxHistory  int
+	ytDlpPath   string
+	outputDir   string
+	cookiesPath string
+	extraArgs   []string
 }
 
-func NewTaskManager(ytDlpPath, outputDir string, maxWorkers, queueSize int) *TaskManager {
+func NewTaskManager(ytDlpPath, outputDir string, maxWorkers, queueSize int, cookiesPath string, extraArgs []string) *TaskManager {
 	tm := &TaskManager{
-		tasks:      make([]*Task, 0),
-		queue:      make(chan *Task, queueSize),
-		maxHistory: 100,
-		ytDlpPath:  ytDlpPath,
-		outputDir:  outputDir,
+		tasks:       make([]*Task, 0),
+		queue:       make(chan *Task, queueSize),
+		maxHistory:  100,
+		ytDlpPath:   ytDlpPath,
+		outputDir:   outputDir,
+		cookiesPath: cookiesPath,
+		extraArgs:   extraArgs,
 	}
 
 	// Start worker pool
@@ -309,6 +313,40 @@ func DownloadOfficialYtDlp() (string, error) {
 	return absPath, nil
 }
 
+// ytDlpCommand builds the full argv for a download: the shared hardening flags,
+// the optional cookies file, then any extra arguments the operator configured
+// (for example "--js-runtimes", "deno" to satisfy YouTube's JS challenge).
+// The URL is always last, after "--", so nothing user-supplied can be read as a
+// URL or override the output template.
+func (tm *TaskManager) ytDlpCommand(execPath, videoURL string) []string {
+	outputTemplate := filepath.Join(tm.outputDir, "%(title)s.%(ext)s")
+
+	args := []string{
+		execPath,
+		"--no-exec",            // Prevent command execution via yt-dlp configs
+		"--no-config",          // Ignore system configuration files
+		"--restrict-filenames", // Prevent dangerous characters in filenames
+		"--no-playlist",        // Prevent downloading entire multi-gigabyte playlists
+	}
+
+	if tm.cookiesPath != "" {
+		args = append(args, "--cookies", tm.cookiesPath)
+	}
+
+	for _, extra := range tm.extraArgs {
+		// Skip blanks and a bare "--", which would end option parsing early and
+		// swallow the output template.
+		trimmed := strings.TrimSpace(extra)
+		if trimmed == "" || trimmed == "--" {
+			continue
+		}
+		args = append(args, trimmed)
+	}
+
+	args = append(args, "-o", outputTemplate, "--", videoURL)
+	return args
+}
+
 // AddDownloadTask queues a safe yt-dlp download task
 func (tm *TaskManager) AddDownloadTask(jobType, videoURL string) (string, error) {
 	parsedURL, err := ValidateAndSanitizeVideoURL(videoURL)
@@ -329,19 +367,9 @@ func (tm *TaskManager) AddDownloadTask(jobType, videoURL string) (string, error)
 	idBytes[8] = (idBytes[8] & 0x3f) | 0x80
 	taskID := hex.EncodeToString(idBytes)
 
-	outputTemplate := filepath.Join(tm.outputDir, "%(title)s.%(ext)s")
-
-	// Hardened yt-dlp arguments
-	args := []string{
-		execPath,
-		"--no-exec",            // Prevent command execution via yt-dlp configs
-		"--no-config",          // Ignore system configuration files
-		"--restrict-filenames", // Prevent dangerous characters in filenames
-		"--no-playlist",        // Prevent downloading entire multi-gigabyte playlists
-		"-o", outputTemplate,
-		"--", // End of command flags - URL follows
-		parsedURL.String(),
-	}
+	// Hardened yt-dlp arguments, plus the optional cookies file and any
+	// operator-configured extra flags.
+	args := tm.ytDlpCommand(execPath, parsedURL.String())
 
 	task := &Task{
 		ID:        taskID,

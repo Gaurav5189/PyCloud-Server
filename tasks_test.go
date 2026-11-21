@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
@@ -43,7 +44,7 @@ func TestTaskCompletionDoesNotDeadlock(t *testing.T) {
 	stub := writeStubYtDlp(t, dir,
 		"#!/bin/sh\necho '[download] Destination: stub.mp4'\necho '[download] 100% of 1.00MiB'\nexit 0\n")
 
-	tm := NewTaskManager(stub, dir, 1, 4)
+	tm := NewTaskManager(stub, dir, 1, 4, "", nil)
 	id, err := tm.AddDownloadTask("Media Download", "https://www.youtube.com/watch?v=abc123")
 	if err != nil {
 		t.Fatalf("AddDownloadTask: %v", err)
@@ -72,7 +73,7 @@ func TestCancelTaskDoesNotDeadlock(t *testing.T) {
 	dir := t.TempDir()
 	stub := writeStubYtDlp(t, dir, "#!/bin/sh\necho started\nsleep 5\n")
 
-	tm := NewTaskManager(stub, dir, 1, 4)
+	tm := NewTaskManager(stub, dir, 1, 4, "", nil)
 	id, err := tm.AddDownloadTask("Media Download", "https://youtu.be/abc")
 	if err != nil {
 		t.Fatalf("AddDownloadTask: %v", err)
@@ -104,4 +105,47 @@ func TestCancelTaskDoesNotDeadlock(t *testing.T) {
 	}
 
 	getTasksBounded(t, tm) // must still respond after cancelling
+}
+
+// Cookies and extra flags must be injected, and the URL must remain the final
+// argument after "--" so nothing operator-supplied can be read as a URL.
+func TestYtDlpCommandBuildsArgs(t *testing.T) {
+	dir := t.TempDir()
+	tm := NewTaskManager("yt-dlp", dir, 1, 1, "/etc/pycloud/cookies.txt",
+		[]string{"--js-runtimes", "deno", "  ", "--", "--proxy", "http://127.0.0.1:8080"})
+
+	args := tm.ytDlpCommand("/usr/bin/yt-dlp", "https://youtu.be/abc")
+
+	want := []string{
+		"/usr/bin/yt-dlp",
+		"--no-exec", "--no-config", "--restrict-filenames", "--no-playlist",
+		"--cookies", "/etc/pycloud/cookies.txt",
+		"--js-runtimes", "deno",
+		"--proxy", "http://127.0.0.1:8080",
+		"-o", filepath.Join(dir, "%(title)s.%(ext)s"),
+		"--", "https://youtu.be/abc",
+	}
+	if len(args) != len(want) {
+		t.Fatalf("arg count: got %d %q, want %d %q", len(args), args, len(want), want)
+	}
+	for i := range want {
+		if args[i] != want[i] {
+			t.Fatalf("arg %d: got %q want %q\nfull argv: %q", i, args[i], want[i], args)
+		}
+	}
+	if args[len(args)-2] != "--" || args[len(args)-1] != "https://youtu.be/abc" {
+		t.Fatalf("URL must terminate the argv after --: %q", args)
+	}
+	if strings.Contains(strings.Join(args, " "), "--   --") {
+		t.Fatalf("stray empty extra arg leaked into argv: %q", args)
+	}
+}
+
+func TestYtDlpCommandOmitsCookiesWhenUnset(t *testing.T) {
+	tm := NewTaskManager("yt-dlp", t.TempDir(), 1, 1, "", nil)
+	for _, arg := range tm.ytDlpCommand("yt-dlp", "https://youtu.be/abc") {
+		if arg == "--cookies" {
+			t.Fatal("--cookies must not be added when no cookies file is configured")
+		}
+	}
 }

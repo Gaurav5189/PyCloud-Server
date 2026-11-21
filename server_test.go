@@ -30,7 +30,7 @@ func setupTestServer(t *testing.T) (*Config, *SessionManager, *LoginRateLimiter,
 
 	sessionMgr := NewSessionManager(cfg.GetSessionSecretBytes())
 	loginRateLimiter := NewLoginRateLimiter(5, 5*time.Minute)
-	taskMgr := NewTaskManager("yt-dlp", cfg.YtDir, 1, 10)
+	taskMgr := NewTaskManager("yt-dlp", cfg.YtDir, 1, 10, "", nil)
 	statsCollector := NewStatsCollector(cfg.RootDir)
 
 	mux := http.NewServeMux()

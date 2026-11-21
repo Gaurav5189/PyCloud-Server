@@ -160,7 +160,9 @@ PyCloud reads `config.json` from its working directory and creates it on first r
   "tls_key_file": "certs/server.key",
   "max_upload_mb": 4096,
   "trash_retention_days": 30,
-  "yt_dlp_path": "yt-dlp"
+  "yt_dlp_path": "yt-dlp",
+  "yt_dlp_cookies": "",
+  "yt_dlp_extra_args": []
 }
 ```
 
@@ -177,6 +179,10 @@ PyCloud reads `config.json` from its working directory and creates it on first r
 | `max_upload_mb` | int | `4096` | Maximum size of a single upload request, in MB |
 | `trash_retention_days` | int | `30` | Reserved; not enforced by the current release |
 | `yt_dlp_path` | string | `"yt-dlp"` | yt-dlp binary name or path |
+| `yt_dlp_cookies` | string | `""` | Path to a Netscape-format `cookies.txt` passed to yt-dlp as `--cookies` |
+| `yt_dlp_extra_args` | string[] | `[]` | Extra yt-dlp flags, appended before the URL (e.g. `["--js-runtimes", "deno"]`) |
+
+See [Downloads fail or YouTube says "Sign in to confirm you're not a bot"](#downloads-fail-or-youtube-says-sign-in-to-confirm-youre-not-a-bot) for when to set the last two.
 
 ### Command-line flags
 
@@ -301,6 +307,28 @@ Raise `max_upload_mb` in `config.json` and restart.
 <summary><strong>"yt-dlp is not installed" when fetching media</strong></summary>
 
 Open **Fetch media** and use **Download &amp; configure**, or install yt-dlp yourself and set `yt_dlp_path`.
+</details>
+
+<details>
+<summary><strong>Downloads fail, or YouTube says "Sign in to confirm you're not a bot"</strong></summary>
+
+This is yt-dlp, not PyCloud — YouTube is refusing the request. Two common causes on a server:
+
+1. **No JavaScript runtime.** yt-dlp needs Deno, Node, Bun, or QuickJS to solve YouTube's player challenge. Install one (e.g. [Deno](https://deno.com)) and tell yt-dlp to use it:
+
+   ```json
+   "yt_dlp_extra_args": ["--js-runtimes", "deno"]
+   ```
+
+2. **Datacenter IP.** YouTube treats cloud and VPS addresses as bots and demands a signed-in session. Export cookies from a browser where you are signed in (Netscape `cookies.txt` format) and point PyCloud at the file:
+
+   ```json
+   "yt_dlp_cookies": "/srv/pycloud/cookies.txt"
+   ```
+
+   Keep that file private (`chmod 600`) — it grants access to your account. If YouTube still blocks the IP, route yt-dlp through a residential proxy instead: `"yt_dlp_extra_args": ["--proxy", "http://user:pass@host:port"]`.
+
+Restart PyCloud after editing `config.json`. If `yt_dlp_cookies` is set but unreadable, the startup log warns about it.
 </details>
 
 <details>

@@ -9,5 +9,7 @@
   "tls_key_file": "certs/server.key",
   "max_upload_mb": 4096,
   "trash_retention_days": 30,
-  "yt_dlp_path": "yt-dlp"
+  "yt_dlp_path": "yt-dlp",
+  "yt_dlp_cookies": "",
+  "yt_dlp_extra_args": []
 }

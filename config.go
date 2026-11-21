@@ -12,17 +12,19 @@ import (
 )
 
 type Config struct {
-	Port               int    `json:"port"`
-	BindAddr           string `json:"bind_addr"`
-	RootDir            string `json:"root_dir"`
-	PasswordHash       string `json:"password_hash"`
-	SessionSecret      string `json:"session_secret"`
-	TLSEnabled         bool   `json:"tls_enabled"`
-	TLSCertFile        string `json:"tls_cert_file"`
-	TLSKeyFile         string `json:"tls_key_file"`
-	MaxUploadMB        int64  `json:"max_upload_mb"`
-	TrashRetentionDays int    `json:"trash_retention_days"`
-	YtDlpPath          string `json:"yt_dlp_path"`
+	Port               int      `json:"port"`
+	BindAddr           string   `json:"bind_addr"`
+	RootDir            string   `json:"root_dir"`
+	PasswordHash       string   `json:"password_hash"`
+	SessionSecret      string   `json:"session_secret"`
+	TLSEnabled         bool     `json:"tls_enabled"`
+	TLSCertFile        string   `json:"tls_cert_file"`
+	TLSKeyFile         string   `json:"tls_key_file"`
+	MaxUploadMB        int64    `json:"max_upload_mb"`
+	TrashRetentionDays int      `json:"trash_retention_days"`
+	YtDlpPath          string   `json:"yt_dlp_path"`
+	YtDlpCookies       string   `json:"yt_dlp_cookies"`
+	YtDlpExtraArgs     []string `json:"yt_dlp_extra_args"`
 
 	// Derived paths
 	MediaDir  string `json:"-"`
@@ -51,6 +53,8 @@ func DefaultConfig() *Config {
 		MaxUploadMB:        4096, // 4GB
 		TrashRetentionDays: 30,
 		YtDlpPath:          "yt-dlp",
+		YtDlpCookies:       "",
+		YtDlpExtraArgs:     nil,
 	}
 }
 

@@ -35,7 +35,12 @@ func main() {
 	// 2. Initialize Security & Core Components
 	sessionMgr := NewSessionManager(cfg.GetSessionSecretBytes())
 	loginRateLimiter := NewLoginRateLimiter(5, 5*time.Minute) // 5 attempts per 5 minutes
-	taskMgr := NewTaskManager(cfg.YtDlpPath, cfg.YtDir, 2, 50)
+	taskMgr := NewTaskManager(cfg.YtDlpPath, cfg.YtDir, 2, 50, cfg.YtDlpCookies, cfg.YtDlpExtraArgs)
+	if cfg.YtDlpCookies != "" {
+		if _, err := os.Stat(cfg.YtDlpCookies); err != nil {
+			log.Printf("⚠️  yt_dlp_cookies is set to %q but the file is not readable: %v", cfg.YtDlpCookies, err)
+		}
+	}
 	statsCollector := NewStatsCollector(cfg.RootDir)
 
 	// 3. Setup Router & Routes
