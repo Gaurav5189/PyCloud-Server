@@ -195,12 +195,14 @@ func HandleServerStatus(cfg *Config, sm *SessionManager) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"app":          "PyCloud",
-			"version":      "2.0.0",
-			"setup_needed": !cfg.IsPasswordSet(),
-			"logged_in":    isLoggedIn,
-			"tls_enabled":  cfg.TLSEnabled,
-			"port":         cfg.Port,
+			"app":            "PyCloud",
+			"version":        "2.0.0",
+			"setup_needed":   !cfg.IsPasswordSet(),
+			"logged_in":      isLoggedIn,
+			"tls_enabled":    cfg.TLSEnabled,
+			"port":           cfg.Port,
+			"uptime_seconds": ServerUptimeSeconds(),
+			"started_at":     serverStartTime.Unix(),
 		})
 	}
 }

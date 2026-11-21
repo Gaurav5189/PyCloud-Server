@@ -72,17 +72,19 @@ type TaskManager struct {
 	maxHistory  int
 	ytDlpPath   string
 	outputDir   string
+	format      string
 	cookiesPath string
 	extraArgs   []string
 }
 
-func NewTaskManager(ytDlpPath, outputDir string, maxWorkers, queueSize int, cookiesPath string, extraArgs []string) *TaskManager {
+func NewTaskManager(ytDlpPath, outputDir string, maxWorkers, queueSize int, format, cookiesPath string, extraArgs []string) *TaskManager {
 	tm := &TaskManager{
 		tasks:       make([]*Task, 0),
 		queue:       make(chan *Task, queueSize),
 		maxHistory:  100,
 		ytDlpPath:   ytDlpPath,
 		outputDir:   outputDir,
+		format:      format,
 		cookiesPath: cookiesPath,
 		extraArgs:   extraArgs,
 	}
@@ -314,8 +316,9 @@ func DownloadOfficialYtDlp() (string, error) {
 }
 
 // ytDlpCommand builds the full argv for a download: the shared hardening flags,
-// the optional cookies file, then any extra arguments the operator configured
-// (for example "--js-runtimes", "deno" to satisfy YouTube's JS challenge).
+// the browser-friendly format selector, the optional cookies file, then any
+// extra arguments the operator configured (for example "--js-runtimes", "deno"
+// to satisfy YouTube's JS challenge).
 // The URL is always last, after "--", so nothing user-supplied can be read as a
 // URL or override the output template.
 func (tm *TaskManager) ytDlpCommand(execPath, videoURL string) []string {
@@ -327,6 +330,12 @@ func (tm *TaskManager) ytDlpCommand(execPath, videoURL string) []string {
 		"--no-config",          // Ignore system configuration files
 		"--restrict-filenames", // Prevent dangerous characters in filenames
 		"--no-playlist",        // Prevent downloading entire multi-gigabyte playlists
+	}
+
+	// Prefer a browser-playable format, unless the operator already pinned one
+	// via -f/--format in yt_dlp_extra_args (a duplicate -f confuses yt-dlp).
+	if tm.format != "" && !hasFormatFlag(tm.extraArgs) {
+		args = append(args, "-f", tm.format)
 	}
 
 	if tm.cookiesPath != "" {
@@ -345,6 +354,23 @@ func (tm *TaskManager) ytDlpCommand(execPath, videoURL string) []string {
 
 	args = append(args, "-o", outputTemplate, "--", videoURL)
 	return args
+}
+
+// hasFormatFlag reports whether the operator's extra arguments already carry a
+// yt-dlp format selector (-f X, -fX, --format X or --format=X).
+func hasFormatFlag(args []string) bool {
+	for _, raw := range args {
+		arg := strings.TrimSpace(raw)
+		switch {
+		case arg == "-f" || arg == "--format":
+			return true
+		case strings.HasPrefix(arg, "--format="):
+			return true
+		case strings.HasPrefix(arg, "-f") && len(arg) > 2:
+			return true
+		}
+	}
+	return false
 }
 
 // AddDownloadTask queues a safe yt-dlp download task

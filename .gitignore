@@ -37,7 +37,6 @@ ffprobe
 pycloud
 pycloud.exe
 bin/
-*.exe
 *.dll
 *.so
 *.dylib

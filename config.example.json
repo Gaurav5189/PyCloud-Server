@@ -10,6 +10,7 @@
   "max_upload_mb": 4096,
   "trash_retention_days": 30,
   "yt_dlp_path": "yt-dlp",
+  "yt_dlp_format": "bv*[vcodec^=avc1]+ba[acodec^=mp4a]/b[ext=mp4]/b",
   "yt_dlp_cookies": "",
   "yt_dlp_extra_args": []
 }

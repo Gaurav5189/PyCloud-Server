@@ -44,7 +44,7 @@ func TestTaskCompletionDoesNotDeadlock(t *testing.T) {
 	stub := writeStubYtDlp(t, dir,
 		"#!/bin/sh\necho '[download] Destination: stub.mp4'\necho '[download] 100% of 1.00MiB'\nexit 0\n")
 
-	tm := NewTaskManager(stub, dir, 1, 4, "", nil)
+	tm := NewTaskManager(stub, dir, 1, 4, "", "", nil)
 	id, err := tm.AddDownloadTask("Media Download", "https://www.youtube.com/watch?v=abc123")
 	if err != nil {
 		t.Fatalf("AddDownloadTask: %v", err)
@@ -73,7 +73,7 @@ func TestCancelTaskDoesNotDeadlock(t *testing.T) {
 	dir := t.TempDir()
 	stub := writeStubYtDlp(t, dir, "#!/bin/sh\necho started\nsleep 5\n")
 
-	tm := NewTaskManager(stub, dir, 1, 4, "", nil)
+	tm := NewTaskManager(stub, dir, 1, 4, "", "", nil)
 	id, err := tm.AddDownloadTask("Media Download", "https://youtu.be/abc")
 	if err != nil {
 		t.Fatalf("AddDownloadTask: %v", err)
@@ -107,11 +107,11 @@ func TestCancelTaskDoesNotDeadlock(t *testing.T) {
 	getTasksBounded(t, tm) // must still respond after cancelling
 }
 
-// Cookies and extra flags must be injected, and the URL must remain the final
-// argument after "--" so nothing operator-supplied can be read as a URL.
+// Format, cookies and extra flags must be injected, and the URL must remain the
+// final argument after "--" so nothing operator-supplied can be read as a URL.
 func TestYtDlpCommandBuildsArgs(t *testing.T) {
 	dir := t.TempDir()
-	tm := NewTaskManager("yt-dlp", dir, 1, 1, "/etc/pycloud/cookies.txt",
+	tm := NewTaskManager("yt-dlp", dir, 1, 1, DefaultYtDlpFormat, "/etc/pycloud/cookies.txt",
 		[]string{"--js-runtimes", "deno", "  ", "--", "--proxy", "http://127.0.0.1:8080"})
 
 	args := tm.ytDlpCommand("/usr/bin/yt-dlp", "https://youtu.be/abc")
@@ -119,6 +119,7 @@ func TestYtDlpCommandBuildsArgs(t *testing.T) {
 	want := []string{
 		"/usr/bin/yt-dlp",
 		"--no-exec", "--no-config", "--restrict-filenames", "--no-playlist",
+		"-f", DefaultYtDlpFormat,
 		"--cookies", "/etc/pycloud/cookies.txt",
 		"--js-runtimes", "deno",
 		"--proxy", "http://127.0.0.1:8080",
@@ -142,10 +143,48 @@ func TestYtDlpCommandBuildsArgs(t *testing.T) {
 }
 
 func TestYtDlpCommandOmitsCookiesWhenUnset(t *testing.T) {
-	tm := NewTaskManager("yt-dlp", t.TempDir(), 1, 1, "", nil)
+	tm := NewTaskManager("yt-dlp", t.TempDir(), 1, 1, "", "", nil)
 	for _, arg := range tm.ytDlpCommand("yt-dlp", "https://youtu.be/abc") {
 		if arg == "--cookies" {
 			t.Fatal("--cookies must not be added when no cookies file is configured")
+		}
+	}
+}
+
+// An empty yt_dlp_format must mean "use yt-dlp's own choice", not an empty -f.
+func TestYtDlpCommandOmitsFormatWhenEmpty(t *testing.T) {
+	tm := NewTaskManager("yt-dlp", t.TempDir(), 1, 1, "", "", nil)
+	for _, arg := range tm.ytDlpCommand("yt-dlp", "https://youtu.be/abc") {
+		if arg == "-f" || strings.HasPrefix(arg, "--format") {
+			t.Fatalf("no format flag expected when yt_dlp_format is empty: %q", arg)
+		}
+	}
+}
+
+// If the operator pins their own format in yt_dlp_extra_args, ours must be
+// dropped: two -f flags make yt-dlp fail with "Requested format is not available".
+func TestYtDlpCommandDefersToOperatorFormat(t *testing.T) {
+	cases := [][]string{
+		{"-f", "worst"},
+		{"-fworst"},
+		{"--format", "worst"},
+		{"--format=worst"},
+	}
+	for _, extra := range cases {
+		tm := NewTaskManager("yt-dlp", t.TempDir(), 1, 1, DefaultYtDlpFormat, "", extra)
+		args := tm.ytDlpCommand("yt-dlp", "https://youtu.be/abc")
+
+		count := 0
+		for _, arg := range args {
+			if arg == DefaultYtDlpFormat {
+				t.Fatalf("built-in format leaked alongside operator format %q: %q", extra, args)
+			}
+			if arg == "-f" || arg == "--format" || strings.HasPrefix(arg, "--format=") || (strings.HasPrefix(arg, "-f") && len(arg) > 2) {
+				count++
+			}
+		}
+		if count != 1 {
+			t.Fatalf("expected exactly one format flag for extra %q, got %d: %q", extra, count, args)
 		}
 	}
 }

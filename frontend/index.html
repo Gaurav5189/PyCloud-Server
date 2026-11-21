@@ -129,7 +129,7 @@
                     <div class="server-line">
                         <span class="dot dot-ok" id="serverDot" aria-hidden="true"></span>
                         <span id="serverState">Server online</span>
-                        <span class="mono server-uptime" id="serverUptime">00:00</span>
+                        <span class="mono server-uptime" id="serverUptime">—</span>
                     </div>
                     <div class="server-endpoint mono" id="serverEndpoint">localhost</div>
                     <div class="server-meta mono">
@@ -202,7 +202,7 @@
                                 <span class="sep" aria-hidden="true">·</span>
                                 <span class="mono" id="localClock">--:--</span>
                                 <span class="sep" aria-hidden="true">·</span>
-                                <span class="mono" id="sessionUptime">session 00:00</span>
+                                <span class="mono" id="sessionUptime">up —</span>
                             </p>
                         </div>
                         <div class="view-head-actions">
@@ -349,7 +349,7 @@
                         <header class="panel-head">
                             <div>
                                 <h3>Recent files</h3>
-                                <p class="panel-sub mono">Newest at the root of the cloud</p>
+                                <p class="panel-sub mono">Newest across your libraries</p>
                             </div>
                             <a class="text-link" href="#files" data-nav="files">Open files
                                 <svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
@@ -373,6 +373,10 @@
                             <button class="btn btn-soft btn-sm" id="btnNewFolder" type="button">
                                 <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>
                                 New folder
+                            </button>
+                            <button class="btn btn-sm btn-danger-soft" id="btnEmptyTrash" type="button" hidden>
+                                <svg class="icon" aria-hidden="true"><use href="#i-trash"></use></svg>
+                                Clear all
                             </button>
                         </div>
                     </header>
@@ -423,7 +427,7 @@
 
                     <div class="notice" id="trashNotice" hidden>
                         <svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg>
-                        <span>Items in Trash are removed from disk permanently. There is no restore step.</span>
+                        <span>Items in Trash are removed from disk permanently. There is no restore step — use <strong>Clear all</strong> to empty it at once.</span>
                     </div>
 
                     <div class="file-table" id="fileTable">
@@ -599,8 +603,8 @@
                             <div><dt>Address</dt><dd class="mono" id="setEndpoint">—</dd></div>
                             <div><dt>Version</dt><dd class="mono" id="setVersion">—</dd></div>
                             <div><dt>Transport</dt><dd class="mono" id="setProtocol">—</dd></div>
-                            <div><dt>Session</dt><dd class="mono" id="setSession">—</dd></div>
-                            <div><dt>Page uptime</dt><dd class="mono" id="setUptime">—</dd></div>
+                            <div><dt>Server started</dt><dd class="mono" id="setSession">—</dd></div>
+                            <div><dt>Server uptime</dt><dd class="mono" id="setUptime">—</dd></div>
                         </dl>
                     </section>
 

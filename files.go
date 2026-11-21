@@ -391,6 +391,48 @@ func HandleDelete(cfg *Config) http.HandlerFunc {
 	}
 }
 
+// HandleEmptyTrash permanently deletes every entry inside the trash directory.
+// It only ever touches cfg.TrashDir; the rest of the storage root is untouched.
+func HandleEmptyTrash(cfg *Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+
+		entries, err := os.ReadDir(cfg.TrashDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(map[string]any{"status": "success", "deleted": 0})
+				return
+			}
+			http.Error(w, `{"error":"Failed to read trash"}`, http.StatusInternalServerError)
+			return
+		}
+
+		deleted := 0
+		for _, entry := range entries {
+			// Re-check containment so a crafted entry name can never escape trash.
+			if _, err := SafePathJail(cfg.TrashDir, entry.Name()); err != nil {
+				continue
+			}
+			if err := os.RemoveAll(filepath.Join(cfg.TrashDir, entry.Name())); err != nil {
+				http.Error(w, `{"error":"Failed to empty trash"}`, http.StatusInternalServerError)
+				return
+			}
+			deleted++
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"status":  "success",
+			"deleted": deleted,
+			"message": "Trash emptied",
+		})
+	}
+}
+
 // HandleRename safely renames a file or folder
 func HandleRename(cfg *Config) http.HandlerFunc {
 	type RenameRequest struct {

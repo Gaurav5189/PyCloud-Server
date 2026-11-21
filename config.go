@@ -11,6 +11,15 @@ import (
 	"strconv"
 )
 
+// DefaultYtDlpFormat asks yt-dlp for the most browser-compatible stream:
+// H.264 video with AAC audio (muxed into MP4), which every browser can decode.
+// yt-dlp's own default now prefers AV1, which YouTube serves as .mp4, and many
+// browsers (and most mobile Safari) cannot decode AV1 — producing files that
+// download fine but refuse to play in the web player. Falls back to the best
+// MP4, then to whatever is available. Set yt_dlp_format to "" to use yt-dlp's
+// own choice, or to any other -f expression.
+const DefaultYtDlpFormat = "bv*[vcodec^=avc1]+ba[acodec^=mp4a]/b[ext=mp4]/b"
+
 type Config struct {
 	Port               int      `json:"port"`
 	BindAddr           string   `json:"bind_addr"`
@@ -23,6 +32,7 @@ type Config struct {
 	MaxUploadMB        int64    `json:"max_upload_mb"`
 	TrashRetentionDays int      `json:"trash_retention_days"`
 	YtDlpPath          string   `json:"yt_dlp_path"`
+	YtDlpFormat        string   `json:"yt_dlp_format"`
 	YtDlpCookies       string   `json:"yt_dlp_cookies"`
 	YtDlpExtraArgs     []string `json:"yt_dlp_extra_args"`
 
@@ -53,6 +63,7 @@ func DefaultConfig() *Config {
 		MaxUploadMB:        4096, // 4GB
 		TrashRetentionDays: 30,
 		YtDlpPath:          "yt-dlp",
+		YtDlpFormat:        DefaultYtDlpFormat,
 		YtDlpCookies:       "",
 		YtDlpExtraArgs:     nil,
 	}

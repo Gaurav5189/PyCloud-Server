@@ -20,6 +20,16 @@ var embeddedFrontend embed.FS
 
 const ServerVersion = "2.0.0"
 
+// serverStartTime is captured once, at process start, so the UI can show how
+// long the server itself has been running rather than how long this browser
+// tab has been open.
+var serverStartTime = time.Now()
+
+// ServerUptimeSeconds returns the number of whole seconds the process has run.
+func ServerUptimeSeconds() int64 {
+	return int64(time.Since(serverStartTime).Seconds())
+}
+
 func main() {
 	configPath := "config.json"
 	if p := os.Getenv("PYCLOUD_CONFIG"); p != "" {
@@ -35,7 +45,7 @@ func main() {
 	// 2. Initialize Security & Core Components
 	sessionMgr := NewSessionManager(cfg.GetSessionSecretBytes())
 	loginRateLimiter := NewLoginRateLimiter(5, 5*time.Minute) // 5 attempts per 5 minutes
-	taskMgr := NewTaskManager(cfg.YtDlpPath, cfg.YtDir, 2, 50, cfg.YtDlpCookies, cfg.YtDlpExtraArgs)
+	taskMgr := NewTaskManager(cfg.YtDlpPath, cfg.YtDir, 2, 50, cfg.YtDlpFormat, cfg.YtDlpCookies, cfg.YtDlpExtraArgs)
 	if cfg.YtDlpCookies != "" {
 		if _, err := os.Stat(cfg.YtDlpCookies); err != nil {
 			log.Printf("⚠️  yt_dlp_cookies is set to %q but the file is not readable: %v", cfg.YtDlpCookies, err)
@@ -88,6 +98,7 @@ func main() {
 	mux.HandleFunc("/api/upload", HandleUpload(cfg))
 	mux.HandleFunc("/api/download", HandleDownload(cfg))
 	mux.HandleFunc("/api/delete", HandleDelete(cfg))
+	mux.HandleFunc("/api/trash/empty", HandleEmptyTrash(cfg))
 	mux.HandleFunc("/api/rename", HandleRename(cfg))
 	mux.HandleFunc("/api/mkdir", HandleMkdir(cfg))
 

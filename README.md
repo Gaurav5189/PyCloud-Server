@@ -161,6 +161,7 @@ PyCloud reads `config.json` from its working directory and creates it on first r
   "max_upload_mb": 4096,
   "trash_retention_days": 30,
   "yt_dlp_path": "yt-dlp",
+  "yt_dlp_format": "bv*[vcodec^=avc1]+ba[acodec^=mp4a]/b[ext=mp4]/b",
   "yt_dlp_cookies": "",
   "yt_dlp_extra_args": []
 }
@@ -179,10 +180,11 @@ PyCloud reads `config.json` from its working directory and creates it on first r
 | `max_upload_mb` | int | `4096` | Maximum size of a single upload request, in MB |
 | `trash_retention_days` | int | `30` | Reserved; not enforced by the current release |
 | `yt_dlp_path` | string | `"yt-dlp"` | yt-dlp binary name or path |
+| `yt_dlp_format` | string | `"bv*[vcodec^=avc1]+ba[acodec^=mp4a]/b[ext=mp4]/b"` | yt-dlp `-f` selector. Default prefers H.264/AAC (plays in every browser). Set to `""` to use yt-dlp's own choice, or any other selector |
 | `yt_dlp_cookies` | string | `""` | Path to a Netscape-format `cookies.txt` passed to yt-dlp as `--cookies` |
 | `yt_dlp_extra_args` | string[] | `[]` | Extra yt-dlp flags, appended before the URL (e.g. `["--js-runtimes", "deno"]`) |
 
-See [Downloads fail or YouTube says "Sign in to confirm you're not a bot"](#downloads-fail-or-youtube-says-sign-in-to-confirm-youre-not-a-bot) for when to set the last two.
+See [A downloaded video will not play](#a-downloaded-video-will-not-play) and [Downloads fail or YouTube says "Sign in to confirm you're not a bot"](#downloads-fail-or-youtube-says-sign-in-to-confirm-youre-not-a-bot) for when to change the last three.
 
 ### Command-line flags
 
@@ -227,6 +229,7 @@ The web UI is a thin client over a small JSON API. Every endpoint except `status
 | POST | `/api/upload` | Multipart upload (`path`, `file`) |
 | GET | `/api/download?path=&dl=1` | Download with HTTP Range support |
 | POST | `/api/delete` | Move to trash, or delete permanently from trash |
+| POST | `/api/trash/empty` | Permanently delete every item in Trash |
 | POST | `/api/rename` | Rename a file or folder |
 | POST | `/api/mkdir` | Create a folder |
 | GET | `/api/media/stream` · `/api/media/info` · `/api/media/subtitles` | Stream, probe, and fetch subtitles |
@@ -266,7 +269,7 @@ Requests pass through logging, security headers, CSRF, and session-auth middlewa
 
 - **Single admin account.** There are no users, roles, or per-file permissions.
 - **Self-signed TLS by default.** For a public HTTPS certificate, terminate TLS at a reverse proxy (`-bind 127.0.0.1 -no-tls`) or supply `-cert`/`-key`.
-- **Trash is never purged automatically.** `trash_retention_days` is present in the config but not enforced yet; empty Trash yourself.
+- **Trash is never purged automatically.** `trash_retention_days` is present in the config but not enforced yet; open Trash and use **Clear all** to empty it.
 - **In-browser playback depends on codec support.** MP4/WebM/MP3/FLAC/images play; MKV, AVI, and some MOV files usually cannot be decoded by browsers, so the player offers a download instead.
 - **Downloads are serialized.** Two workers, a 50-item queue, a 2-hour per-job timeout, and 100 tasks of history. `yt-dlp` (installable in-app) and `ffmpeg` (optional) are required for the fetch feature only.
 - **Task history is in-memory.** Restarting PyCloud clears the task list; anything already downloaded stays on disk under `media/yt_library`.
@@ -307,6 +310,24 @@ Raise `max_upload_mb` in `config.json` and restart.
 <summary><strong>"yt-dlp is not installed" when fetching media</strong></summary>
 
 Open **Fetch media** and use **Download &amp; configure**, or install yt-dlp yourself and set `yt_dlp_path`.
+</details>
+
+<details>
+<summary><strong>A downloaded video will not play ("cannot be played in the browser")</strong></summary>
+
+An uploaded MP4 plays but a yt-dlp download does not: the container is the same, the **codec inside** is not. yt-dlp now prefers **AV1**, which YouTube serves inside `.mp4`, and many browsers (especially mobile Safari and some Chrome builds) cannot decode it. PyCloud's player can only play what the browser itself can decode — it does not transcode.
+
+The built-in default (`yt_dlp_format`) already asks yt-dlp for **H.264 video + AAC audio**, which every browser plays. If you set `yt_dlp_format` to `""` (yt-dlp's own choice) you will get AV1 again. To confirm a file's codec:
+
+```bash
+ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,profile -of default=nw=1 "video.mp4"
+```
+
+`codec_name=av1` (or `vp9`) in a `.mp4` is the usual culprit; `h264` plays everywhere. Re-download the video (the new default produces H.264/AAC), or convert an existing file:
+
+```bash
+ffmpeg -i in.mp4 -c:v libx264 -c:a aac -movflags +faststart out.mp4
+```
 </details>
 
 <details>

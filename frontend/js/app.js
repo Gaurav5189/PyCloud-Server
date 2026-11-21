@@ -198,6 +198,43 @@
         return secs + 's';
     }
 
+    function formatUptimeCompact(totalSeconds) {
+        const seconds = Math.max(0, Math.floor(totalSeconds));
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        if (days > 0) return days + 'd ' + hours + 'h';
+        if (hours > 0) return hours + 'h ' + minutes + 'm';
+        if (minutes > 0) return minutes + 'm';
+        return seconds + 's';
+    }
+
+    // The server reports its own uptime; we anchor that value to a local
+    // timestamp so the clock can tick locally between polls. Two browser tabs
+    // therefore show the same figure, and a server restart shows up on the next
+    // poll instead of resetting per page load.
+    function setServerUptime(seconds, startedAt) {
+        const value = Number(seconds);
+        if (Number.isFinite(value)) {
+            state.serverUptimeBase = value;
+            state.serverUptimeAt = Date.now();
+        }
+        const started = Number(startedAt);
+        if (Number.isFinite(started) && started > 0) state.serverStartedAt = started;
+    }
+
+    function serverUptimeNow() {
+        if (state.serverUptimeBase === null) return null;
+        return Math.max(0, Math.floor(state.serverUptimeBase + (Date.now() - state.serverUptimeAt) / 1000));
+    }
+
+    function formatServerStart() {
+        if (!state.serverStartedAt) return '—';
+        const date = new Date(state.serverStartedAt * 1000);
+        if (Number.isNaN(date.getTime())) return '—';
+        return date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+    }
+
     /* ── State ─────────────────────────────────────────────────────────── */
 
     const state = {
@@ -239,7 +276,10 @@
         palette: { items: [], index: 0, query: '', open: false },
         connFails: 0,
         connected: true,
-        startedAt: Date.now(),
+        serverUptimeBase: null,
+        serverUptimeAt: 0,
+        serverStartedAt: null,
+        recentFiles: [],
         pollStats: null,
         pollTasks: null,
         thumbObserver: null,
@@ -595,7 +635,7 @@
         setText('setEndpoint', location.host || 'localhost');
         setText('setVersion', 'v' + version);
         setText('setProtocol', (location.protocol || 'http:').replace(':', '').toUpperCase() + (tls ? ' · TLS' : ' · plain'));
-        setText('setSession', 'admin · active');
+        setText('setSession', formatServerStart());
     }
 
     function showLogin() {
@@ -621,6 +661,7 @@
             const res = await fetch('/api/status', { cache: 'no-store' });
             const data = await res.json();
             state.status = data;
+            setServerUptime(data.uptime_seconds, data.started_at);
             updateServerChrome();
             if (data.setup_needed) {
                 showSetup();
@@ -816,6 +857,7 @@
     }
 
     function renderStats(data) {
+        setServerUptime(data.uptime_seconds, data.started_at);
         setText('statCpu', data.cpu_load || '—');
         setText('statRam', data.ram_usage || '—');
 
@@ -1052,7 +1094,7 @@
             renderCategoryChips();
             applyFileFilter();
             updateUploadTarget();
-            renderRecentFromRoot();
+            updateTrashActions();
             renderStorage();
             noteRequestSuccess();
         } catch (err) {
@@ -1415,6 +1457,50 @@
         if (zone) zone.classList.toggle('is-disabled', isTrashPath(state.path));
     }
 
+    function updateTrashActions() {
+        const btn = $('#btnEmptyTrash');
+        if (!btn) return;
+        btn.hidden = !isTrashPath(state.path);
+    }
+
+    async function clearTrash() {
+        if (!isTrashPath(state.path)) return;
+        const total = Array.isArray(state.files) ? state.files.length : 0;
+        const confirmed = await confirmAction({
+            title: 'Clear all Trash?',
+            message: total > 0
+                ? 'All ' + total + ' item' + (total === 1 ? '' : 's') + ' in Trash will be erased from disk. This cannot be undone.'
+                : 'Trash is already empty.',
+            confirmLabel: 'Clear all',
+            requireText: 'clear',
+            danger: true
+        });
+        if (!confirmed) return;
+
+        const btn = $('#btnEmptyTrash');
+        if (btn) btn.disabled = true;
+        try {
+            const res = await apiFetch('/api/trash/empty', { method: 'POST' });
+            if (!res.ok) {
+                toast(await readError(res, 'Could not clear Trash.'), 'error');
+                return;
+            }
+            const data = await res.json().catch(() => null);
+            const deleted = data && Number.isFinite(Number(data.deleted)) ? Number(data.deleted) : 0;
+            toast(deleted ? 'Trash cleared · ' + deleted + ' item' + (deleted === 1 ? '' : 's') + ' removed.' : 'Trash is already empty.', deleted ? 'success' : 'info');
+            state.path = LIBRARY_PATHS.trash;
+            state.filesLoaded = false;
+            await loadFiles(LIBRARY_PATHS.trash, { silent: true });
+            loadLibraries(true);
+        } catch (err) {
+            if (handleAuthFailure(err)) return;
+            toast(err.message || 'Could not clear Trash.', 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+            updateTrashActions();
+        }
+    }
+
     function openUploadPicker() {
         if (isTrashPath(state.path)) {
             toast('Trash is read-only for uploads. Open another folder first.', 'error');
@@ -1551,11 +1637,6 @@
 
     /* ── Recent files ──────────────────────────────────────────────────── */
 
-    function renderRecentFromRoot() {
-        if (state.path !== '' || !state.filesLoaded) return;
-        renderRecent(state.files);
-    }
-
     function renderRecent(files) {
         const container = $('#recentFiles');
         if (!container) return;
@@ -1567,7 +1648,7 @@
             .slice(0, 6);
 
         if (recent.length === 0) {
-            container.appendChild(el('p', 'empty-inline', 'No files at the root yet. Upload something to get started.'));
+            container.appendChild(el('p', 'empty-inline', 'No files yet. Upload something or fetch media to get started.'));
             return;
         }
 
@@ -1940,7 +2021,7 @@
             video.playsInline = true;
             video.preload = 'metadata';
             video.src = streamUrl(file.path);
-            video.addEventListener('error', () => showPlayerError(stage, 'This video format cannot be decoded by the browser. Download it and play it locally.'));
+            video.addEventListener('error', () => showPlayerError(stage, 'This video cannot be played in the browser. Its codec is not supported—commonly AV1 in a .mp4 from YouTube. Re-download it with a browser-friendly format (yt_dlp_format), or use Download.'));
             stage.appendChild(video);
 
             loadSubtitleTrack(file, video);
@@ -2447,15 +2528,37 @@
     }
 
     async function loadOverviewFiles() {
+        // "Recent" spans the whole cloud, not just the storage root: uploads and
+        // fetched media live under media/uploads and media/yt_library, so a
+        // root-only listing showed an empty panel even after uploading.
+        const sources = ['', LIBRARY_PATHS.uploads, LIBRARY_PATHS.youtube];
         try {
-            const data = await fetchDir('');
-            const files = Array.isArray(data.files) ? data.files : [];
+            const results = await Promise.allSettled(sources.map((path) => fetchDir(path)));
+
+            let rootFiles = [];
+            const files = [];
+            results.forEach((result, index) => {
+                if (result.status !== 'fulfilled') return;
+                const list = Array.isArray(result.value.files) ? result.value.files : [];
+                if (index === 0) rootFiles = list;
+                list.forEach((file) => {
+                    if (!file.is_dir) files.push(file);
+                });
+            });
+
+            if (!results.some((result) => result.status === 'fulfilled')) {
+                throw (results[0] && results[0].reason) || new Error('Could not list files');
+            }
+
             let total = 0;
-            files.forEach((file) => {
+            rootFiles.forEach((file) => {
                 if (!file.is_dir) total += Number(file.size) || 0;
             });
             state.rootOtherSize = total;
             state.rootOtherSizeAt = Date.now();
+
+            files.sort((a, b) => (Number(b.mod_time) || 0) - (Number(a.mod_time) || 0));
+            state.recentFiles = files;
             renderRecent(files);
             renderStorage();
             noteRequestSuccess();
@@ -2634,7 +2737,7 @@
         setText('setVersion', 'v' + version);
         const tls = Boolean(state.status && state.status.tls_enabled);
         setText('setProtocol', (location.protocol || 'http:').replace(':', '').toUpperCase() + (tls ? ' · TLS' : ' · plain'));
-        setText('setSession', 'admin · active');
+        setText('setSession', formatServerStart());
     }
 
     function resetPreferences() {
@@ -2655,13 +2758,16 @@
         const hhmm = pad(now.getHours()) + ':' + pad(now.getMinutes());
         setText('localClock', hhmm);
 
-        const elapsed = Math.floor((Date.now() - state.startedAt) / 1000);
-        const mm = Math.floor(elapsed / 60);
-        const ss = elapsed % 60;
-        const session = pad(mm) + ':' + pad(ss);
-        setText('sessionUptime', 'session ' + session);
-        setText('serverUptime', session);
-        setText('setUptime', formatUptimeLong(elapsed));
+        const elapsed = serverUptimeNow();
+        if (elapsed === null) {
+            setText('sessionUptime', 'up —');
+            setText('serverUptime', '—');
+            setText('setUptime', '—');
+        } else {
+            setText('sessionUptime', 'up ' + formatUptimeLong(elapsed));
+            setText('serverUptime', formatUptimeCompact(elapsed));
+            setText('setUptime', formatUptimeLong(elapsed));
+        }
 
         const hour = now.getHours();
         const part = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
@@ -2898,6 +3004,8 @@
             if (isTrashPath(state.path)) { toast('Trash is read-only. Open another folder first.', 'error'); return; }
             openMkdir();
         });
+        const emptyTrash = $('#btnEmptyTrash');
+        if (emptyTrash) emptyTrash.addEventListener('click', clearTrash);
         const retry = $('#btnRetryConn');
         if (retry) retry.addEventListener('click', async () => {
             // Probe the server directly — that is what actually sets/clears the banner.

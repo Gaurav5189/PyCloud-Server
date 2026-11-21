@@ -8,12 +8,14 @@ import (
 )
 
 type SystemStats struct {
-	DiskPercent string `json:"disk_pct"`
-	DiskFreeGB  string `json:"free_gb"`
-	DiskTotalGB string `json:"total_gb"`
-	CPULoad     string `json:"cpu_load"`
-	RAMUsage    string `json:"ram_usage"`
-	Timestamp   int64  `json:"timestamp"`
+	DiskPercent   string `json:"disk_pct"`
+	DiskFreeGB    string `json:"free_gb"`
+	DiskTotalGB   string `json:"total_gb"`
+	CPULoad       string `json:"cpu_load"`
+	RAMUsage      string `json:"ram_usage"`
+	Timestamp     int64  `json:"timestamp"`
+	UptimeSeconds int64  `json:"uptime_seconds"`
+	StartedAt     int64  `json:"started_at"`
 }
 
 type StatsCollector struct {
@@ -49,6 +51,8 @@ func (sc *StatsCollector) GetStats() *SystemStats {
 
 	stats := collectPlatformStats(sc.rootDir)
 	stats.Timestamp = time.Now().Unix()
+	stats.UptimeSeconds = ServerUptimeSeconds()
+	stats.StartedAt = serverStartTime.Unix()
 
 	sc.cachedStats = stats
 	sc.lastUpdate = time.Now()
