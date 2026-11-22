@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -37,6 +38,12 @@ func (w *statusLoggingResponseWriter) Write(b []byte) (int, error) {
 	n, err := w.ResponseWriter.Write(b)
 	w.written += int64(n)
 	return n, err
+}
+
+// Unwrap lets http.ResponseController reach the underlying ResponseWriter, so
+// per-request read/write deadlines still work through the logging wrapper.
+func (w *statusLoggingResponseWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
 }
 
 // SecurityHeadersMiddleware adds industry-standard defense-in-depth headers
@@ -84,6 +91,51 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 
 		log.Printf("[%s] %s %s %d %s %d bytes",
 			clientIP, r.Method, r.URL.Path, sw.statusCode, duration.Round(time.Millisecond), sw.written)
+	})
+}
+
+// bodyIdleTimeoutReader refreshes the connection read deadline before every
+// read. That turns a total-request timeout into an idle timeout: a large upload
+// may run for as long as it keeps making progress, but a connection that stalls
+// is released instead of pinning a goroutine forever.
+type bodyIdleTimeoutReader struct {
+	r    io.Reader
+	rc   *http.ResponseController
+	idle time.Duration
+}
+
+func (b *bodyIdleTimeoutReader) Read(p []byte) (int, error) {
+	_ = b.rc.SetReadDeadline(time.Now().Add(b.idle))
+	return b.r.Read(p)
+}
+
+func (b *bodyIdleTimeoutReader) Close() error {
+	if closer, ok := b.r.(io.Closer); ok {
+		return closer.Close()
+	}
+	return nil
+}
+
+// BodyIdleTimeoutMiddleware applies a sliding read deadline to request bodies.
+// http.Server.ReadTimeout cannot be used for this because it caps the entire
+// request, including uploads that legitimately take minutes or hours.
+func BodyIdleTimeoutMiddleware(idle time.Duration, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body == nil || r.Body == http.NoBody {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		rc := http.NewResponseController(w)
+		if err := rc.SetReadDeadline(time.Now().Add(idle)); err != nil {
+			// Not supported on this connection type (for example HTTP/2, where a
+			// deadline would affect every multiplexed stream). Leave it alone.
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		r.Body = &bodyIdleTimeoutReader{r: r.Body, rc: rc, idle: idle}
+		next.ServeHTTP(w, r)
 	})
 }
 

@@ -636,6 +636,16 @@
         setText('setVersion', 'v' + version);
         setText('setProtocol', (location.protocol || 'http:').replace(':', '').toUpperCase() + (tls ? ' · TLS' : ' · plain'));
         setText('setSession', formatServerStart());
+
+        const maxMB = Number(state.status && state.status.max_upload_mb);
+        setText('uploadLimit', Number.isFinite(maxMB) && maxMB > 0
+            ? formatBytes(maxMB * 1024 * 1024) + ' per request'
+            : '—');
+    }
+
+    function maxUploadBytes() {
+        const maxMB = Number(state.status && state.status.max_upload_mb);
+        return Number.isFinite(maxMB) && maxMB > 0 ? maxMB * 1024 * 1024 : 0;
     }
 
     function showLogin() {
@@ -1542,6 +1552,14 @@
             toast('An upload is already running. Wait for it to finish or cancel it.', 'error');
             return;
         }
+        const limit = maxUploadBytes();
+        if (limit > 0) {
+            const tooBig = files.find((file) => file.size > limit);
+            if (tooBig) {
+                toast(tooBig.name + ' is ' + formatBytes(tooBig.size) + '; the server limit is ' + formatBytes(limit) + ' per request.', 'error');
+                return;
+            }
+        }
         const target = uploadTargetPath();
         uploadSequentially(files, target, 0, 0);
     }
@@ -1583,7 +1601,9 @@
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             state.activeUploadXHR = xhr;
-            xhr.open('POST', '/api/upload');
+            // The query parameter lets the server stream the body straight to the
+            // destination instead of buffering a second copy in /tmp.
+            xhr.open('POST', '/api/upload?path=' + encodeURIComponent(target));
             const csrf = getCSRFToken();
             if (csrf) xhr.setRequestHeader('X-CSRF-Token', csrf);
 
@@ -1605,14 +1625,23 @@
                     const data = JSON.parse(xhr.responseText);
                     if (data && data.error) message = data.error;
                 } catch (err) {
-                    if (xhr.status === 413) message = 'The file exceeds the server upload limit.';
+                    if (xhr.status === 413) {
+                        const limit = maxUploadBytes();
+                        message = limit > 0
+                            ? 'The file exceeds the server upload limit of ' + formatBytes(limit) + ' per request.'
+                            : 'The file exceeds the server upload limit.';
+                    } else if (xhr.status === 408) {
+                        message = 'Upload timed out because the connection stalled. Try again on a stable network.';
+                    } else if (xhr.status === 507) {
+                        message = 'The server ran out of disk space while saving the upload.';
+                    }
                 }
                 reject(new Error(message));
             });
 
             xhr.addEventListener('error', () => {
                 state.activeUploadXHR = null;
-                reject(new Error('Network error while uploading.'));
+                reject(new Error('Network error while uploading. Check your connection and try again.'));
             });
 
             xhr.addEventListener('abort', () => {

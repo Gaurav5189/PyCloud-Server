@@ -197,7 +197,7 @@ PyCloud reads `config.json` from its working directory and creates it on first r
 | `tls_enabled` | bool | `true` | Serve HTTPS |
 | `tls_cert_file` | string | `certs/server.crt` | Certificate path (self-signed is generated if missing) |
 | `tls_key_file` | string | `certs/server.key` | Private key path |
-| `max_upload_mb` | int | `4096` | Maximum size of a single upload request, in MB |
+| `max_upload_mb` | int | `4096` | Maximum size of a single upload request, in MB. Uploads are not capped by total duration; a stalled connection is dropped after 60s without data |
 | `trash_retention_days` | int | `30` | Reserved; not enforced by the current release |
 | `yt_dlp_path` | string | `"yt-dlp"` | yt-dlp binary name or path |
 | `yt_dlp_format` | string | `"bv*[vcodec^=avc1]+ba[acodec^=mp4a]/b[ext=mp4]/b"` | yt-dlp `-f` selector. Default prefers H.264/AAC (plays in every browser). Set to `""` to use yt-dlp's own choice, or any other selector |
@@ -247,7 +247,7 @@ The web UI is a thin client over a small JSON API. Every endpoint except `status
 | GET | `/api/status` | Version, TLS state, setup/login status |
 | POST | `/api/setup` · `/api/login` · `/api/logout` | Admin session lifecycle |
 | GET | `/api/files?path=` | List a directory |
-| POST | `/api/upload` | Multipart upload (`path`, `file`) |
+| POST | `/api/upload?path=` | Multipart upload (`file`; the `path` field is also accepted). The query form streams straight to disk |
 | GET | `/api/download?path=&dl=1` | Download with HTTP Range support |
 | POST | `/api/delete` | Move to trash, or delete permanently from trash |
 | POST | `/api/trash/empty` | Permanently delete every item in Trash |
@@ -324,7 +324,9 @@ Another process is on the port. Start with a different one: `./pycloud -port 944
 <details>
 <summary><strong>Uploads fail with 413 or "exceeds maximum limit"</strong></summary>
 
-Raise `max_upload_mb` in `config.json` and restart.
+A 413 means the request really is larger than `max_upload_mb` (default 4096 MB, counted per request). Raise it in `config.json` and restart.
+
+If the message instead says the upload was **interrupted** or **timed out**, the connection dropped or stopped sending data — retrying on a stable network is the fix. PyCloud no longer limits how long an upload or download may take, only how long it may go without progress (60 seconds), so slow mobile uploads of large files are fine.
 </details>
 
 <details>

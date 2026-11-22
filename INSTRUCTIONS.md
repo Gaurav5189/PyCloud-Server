@@ -137,6 +137,12 @@ The suite covers password hashing and verification, the path jail, session manag
 2026/01/01 12:00:00 [127.0.0.1] POST /api/upload 200 12ms 45 bytes
 ```
 
+**Large uploads and downloads.** Never set `http.Server.ReadTimeout` or `WriteTimeout`. They cap the *total* duration of a request, so any transfer that legitimately runs longer than the limit is aborted mid-stream. That is what made a 150MB phone upload fail at ~28% with a misleading 413: the 60s `ReadTimeout` expired while the body was still arriving, `ParseMultipartForm` returned an i/o timeout, and the handler reported every parse error as "exceeds maximum limit". `newHTTPServer` in `main.go` keeps both at zero; `ReadHeaderTimeout` plus `BodyIdleTimeoutMiddleware` (a sliding per-read deadline) provide Slowloris protection without limiting progress. `TestServerDoesNotCapTotalRequestTime` and `TestSlowUploadSurvivesWhileProgressing` guard this.
+
+**Upload errors.** `uploadErrorStatus` in `files.go` maps body failures to real statuses: 413 only for `http.MaxBytesError`, 507 for a full disk, 408 for a stalled connection, and 400 for a dropped/malformed request. Do not collapse these back into a single 413 — it hides network problems behind a size message.
+
+**Upload temp files.** Partial uploads are written beside their destination as `.tmp_<unixnano>_<name>` and renamed into place on success. `cleanupStaleUploadTemps` (started from `main`) sweeps leftovers at startup, but only files matching that exact numeric pattern and older than one hour — so a crash cannot leave hidden space hogs, and a user file that merely starts with `.tmp_` is never deleted. `commitUpload` uses `os.Link` so two simultaneous uploads of the same filename cannot overwrite each other. Trash is read-only for uploads at the API level (`prepareUploadDir`), not just in the SPA.
+
 **Port already in use.** `ss -ltnp | grep 8443` (Linux) or `lsof -i :8443` (macOS), then kill the stale process or use `-port`.
 
 **TLS problems.** A broken or stale certificate lives in `certs/`. Delete `certs/server.crt` and `certs/server.key` and restart to regenerate the self-signed pair. For local work, prefer `-no-tls`.

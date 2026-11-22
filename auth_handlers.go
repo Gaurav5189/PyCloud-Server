@@ -201,6 +201,7 @@ func HandleServerStatus(cfg *Config, sm *SessionManager) http.HandlerFunc {
 			"logged_in":      isLoggedIn,
 			"tls_enabled":    cfg.TLSEnabled,
 			"port":           cfg.Port,
+			"max_upload_mb":  cfg.MaxUploadMB,
 			"uptime_seconds": ServerUptimeSeconds(),
 			"started_at":     serverStartTime.Unix(),
 		})

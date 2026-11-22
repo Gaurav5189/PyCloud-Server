@@ -20,6 +20,10 @@ import (
 // own choice, or to any other -f expression.
 const DefaultYtDlpFormat = "bv*[vcodec^=avc1]+ba[acodec^=mp4a]/b[ext=mp4]/b"
 
+// DefaultMaxUploadMB is the per-request upload limit used when max_upload_mb is
+// missing or non-positive.
+const DefaultMaxUploadMB int64 = 4096
+
 type Config struct {
 	Port               int      `json:"port"`
 	BindAddr           string   `json:"bind_addr"`
@@ -61,7 +65,7 @@ func DefaultConfig() *Config {
 		TLSEnabled:         true,
 		TLSCertFile:        filepath.Join(cwd, "certs", "server.crt"),
 		TLSKeyFile:         filepath.Join(cwd, "certs", "server.key"),
-		MaxUploadMB:        4096, // 4GB
+		MaxUploadMB:        DefaultMaxUploadMB,
 		TrashRetentionDays: 30,
 		YtDlpPath:          "yt-dlp",
 		YtDlpFormat:        DefaultYtDlpFormat,

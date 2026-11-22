@@ -79,6 +79,11 @@ func main() {
 	}
 	statsCollector := NewStatsCollector(cfg.RootDir)
 
+	// Reclaim partial uploads left behind by a previous crash. The one-hour
+	// grace period means an in-flight upload from this process (or a filesystem
+	// with coarse timestamps) can never be mistaken for a leftover.
+	go cleanupStaleUploadTemps(cfg.RootDir, serverStartTime.Add(-time.Hour))
+
 	// 3. Setup Router & Routes
 	mux := http.NewServeMux()
 
@@ -147,6 +152,9 @@ func main() {
 	handler = CSRFMiddleware(cfg.TLSEnabled, handler)
 	handler = SecurityHeadersMiddleware(cfg.TLSEnabled, handler)
 	handler = LoggingMiddleware(handler)
+	// Keep Slowloris protection for request bodies without capping total upload
+	// time: the deadline is refreshed before every successful read.
+	handler = BodyIdleTimeoutMiddleware(60*time.Second, handler)
 
 	// 5. TLS Configuration & Certificate Provisioning
 	var tlsConfig *tls.Config
@@ -170,16 +178,7 @@ func main() {
 
 	// 6. HTTP Server Setup with Resilient Timeouts (Slowloris Protection)
 	listenAddr := fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port)
-	server := &http.Server{
-		Addr:              listenAddr,
-		Handler:           handler,
-		TLSConfig:         tlsConfig,
-		ReadHeaderTimeout: 10 * time.Second,
-		ReadTimeout:       60 * time.Second,
-		WriteTimeout:      120 * time.Second, // Adequate for streaming & downloads
-		IdleTimeout:       120 * time.Second,
-		MaxHeaderBytes:    1 << 20, // 1MB
-	}
+	server := newHTTPServer(cfg, handler, tlsConfig)
 
 	// 7. Print Startup Banner
 	proto := "http"
@@ -250,6 +249,28 @@ func main() {
 			log.Fatalf("❌ Server shutdown error: %v", err)
 		}
 		log.Println("✅ PyCloud server stopped gracefully.")
+	}
+}
+
+// newHTTPServer builds the HTTP server with timeouts that never cap the total
+// duration of a request.
+//
+// ReadTimeout and WriteTimeout are deliberately zero: they apply to the whole
+// request, so the old 60s/120s values aborted any upload or download that
+// legitimately ran longer than a minute (a 150MB phone upload at ~0.7MB/s died
+// at ~28% with a misleading "exceeds maximum limit" error). Slowloris
+// protection comes from ReadHeaderTimeout plus BodyIdleTimeoutMiddleware, which
+// only drops a connection that stops making progress.
+func newHTTPServer(cfg *Config, handler http.Handler, tlsConfig *tls.Config) *http.Server {
+	return &http.Server{
+		Addr:              fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port),
+		Handler:           handler,
+		TLSConfig:         tlsConfig,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       0, // no total cap: uploads may take hours
+		WriteTimeout:      0, // no total cap: downloads/streams may take hours
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20, // 1MB
 	}
 }
 

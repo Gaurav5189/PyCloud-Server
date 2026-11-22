@@ -1,17 +1,24 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"log"
 	"mime"
+	"mime/multipart"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
+	"unicode/utf8"
 )
 
 type FileItem struct {
@@ -166,7 +173,326 @@ func GenerateUniqueName(dir, baseFilename string) string {
 	}
 }
 
-// HandleUpload handles atomic multipart file uploads
+// maxUploadNameBytes keeps the final filename plus the temporary-file prefix
+// below the common 255-byte per-component filesystem limit.
+const maxUploadNameBytes = 200
+
+// sanitizeUploadFilename strips path components, null bytes and separators, and
+// truncates over-long names on a UTF-8 boundary while preserving the extension.
+func sanitizeUploadFilename(name string) string {
+	name = filepath.Base(name)
+	name = strings.ReplaceAll(name, "/", "_")
+	name = strings.ReplaceAll(name, "\\", "_")
+	name = strings.ReplaceAll(name, "\x00", "")
+	name = strings.ToValidUTF8(name, "_")
+
+	if name == "" || name == "." || name == ".." {
+		return fmt.Sprintf("upload_%d", time.Now().UnixNano())
+	}
+
+	if len(name) <= maxUploadNameBytes {
+		return name
+	}
+
+	ext := filepath.Ext(name)
+	if len(ext) > 20 {
+		ext = ""
+	}
+	base := strings.TrimSuffix(name, ext)
+	limit := maxUploadNameBytes - len(ext)
+	if limit < 1 {
+		limit = 1
+	}
+	if len(base) > limit {
+		// Never cut a multi-byte rune in half; the filesystem would reject it.
+		for limit > 0 && !utf8.RuneStart(base[limit]) {
+			limit--
+		}
+		base = base[:limit]
+	}
+	return base + ext
+}
+
+// writeUploadError sends a JSON error body (the SPA parses it) with the status
+// code that actually describes what went wrong.
+func writeUploadError(w http.ResponseWriter, status int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": message})
+}
+
+// uploadErrorStatus maps a multipart read/write failure to a useful status and
+// message. Treating every ParseMultipartForm error as "exceeds maximum limit"
+// hid network drops, stalls and full disks behind a misleading 413.
+func uploadErrorStatus(maxMB int64, err error, phase string) (int, string) {
+	var maxErr *http.MaxBytesError
+	switch {
+	case errors.As(err, &maxErr):
+		return http.StatusRequestEntityTooLarge,
+			fmt.Sprintf("Upload exceeds maximum limit of %d MB", maxMB)
+
+	case errors.Is(err, syscall.ENOSPC):
+		return http.StatusInsufficientStorage,
+			"The server ran out of disk space while " + phase + " the upload."
+
+	case errors.Is(err, os.ErrPermission):
+		return http.StatusInternalServerError,
+			"The server could not " + phase + " the upload: permission denied."
+
+	case errors.Is(err, os.ErrDeadlineExceeded), errors.Is(err, context.DeadlineExceeded):
+		return http.StatusRequestTimeout,
+			"Upload timed out while " + phase + " the upload because the connection stalled. Try again on a stable network."
+
+	case errors.Is(err, io.ErrUnexpectedEOF), errors.Is(err, net.ErrClosed),
+		errors.Is(err, syscall.ECONNRESET), errors.Is(err, context.Canceled):
+		return http.StatusBadRequest,
+			"Upload was interrupted while " + phase + " the upload. Check your connection and try again."
+
+	default:
+		return http.StatusBadRequest,
+			"The upload could not be read while " + phase + " it: the request was malformed or interrupted."
+	}
+}
+
+// uploadTempPrefix marks a partial upload this package writes beside its
+// destination; such files are always renamed away or removed before the request
+// returns, so any that survive a crash are safe to delete at startup.
+const uploadTempPrefix = ".tmp_"
+
+// isUploadTempName matches this package's ".tmp_<unixnano>_<name>" files. The
+// numeric component matters: a user file that merely starts with ".tmp_" must
+// never be mistaken for a leftover and deleted.
+func isUploadTempName(name string) bool {
+	if !strings.HasPrefix(name, uploadTempPrefix) {
+		return false
+	}
+	rest := name[len(uploadTempPrefix):]
+	i := 0
+	for i < len(rest) && rest[i] >= '0' && rest[i] <= '9' {
+		i++
+	}
+	return i > 0 && i < len(rest) && rest[i] == '_'
+}
+
+// cleanupStaleUploadTemps removes partial upload files left behind by a crash or
+// a hard kill. It only deletes files older than cutoff, so it can run in the
+// background while new uploads are in flight without touching their temp files.
+func cleanupStaleUploadTemps(root string, cutoff time.Time) {
+	removed := 0
+	_ = filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() || !isUploadTempName(entry.Name()) {
+			return nil
+		}
+		info, err := entry.Info()
+		if err != nil || !info.ModTime().Before(cutoff) {
+			return nil
+		}
+		if err := os.Remove(path); err == nil {
+			removed++
+		}
+		return nil
+	})
+	if removed > 0 {
+		log.Printf("🧹 Removed %d stale upload temporary file(s)", removed)
+	}
+}
+
+// commitUpload moves a finished temporary file to a unique final name. os.Link
+// fails when the target already exists, which closes the window between naming
+// and moving that two concurrent uploads of the same filename could otherwise
+// race through; the rename is only a fallback for filesystems without hard
+// links.
+func commitUpload(tmpPath, dir, rawName string) (string, error) {
+	for attempt := 0; attempt < 50; attempt++ {
+		finalName := GenerateUniqueName(dir, rawName)
+		finalPath := filepath.Join(dir, finalName)
+
+		if err := os.Link(tmpPath, finalPath); err == nil {
+			_ = os.Remove(tmpPath)
+			return finalName, nil
+		} else if errors.Is(err, fs.ErrExist) {
+			continue
+		}
+
+		if err := os.Rename(tmpPath, finalPath); err != nil {
+			if errors.Is(err, fs.ErrExist) {
+				continue
+			}
+			return "", fmt.Errorf("finalize upload: %w", err)
+		}
+		return finalName, nil
+	}
+	return "", fmt.Errorf("finalize upload: could not find a unique name for %q", rawName)
+}
+
+// saveUploadStream writes one file to a temporary file in the target directory
+// and commits it only after the copy is complete. The temporary file lives
+// beside the destination, so an upload never needs a second copy's worth of
+// space in the system temp directory.
+func saveUploadStream(src io.Reader, filename, dir string) (string, error) {
+	rawName := sanitizeUploadFilename(filename)
+	tmpPath := filepath.Join(dir, fmt.Sprintf("%s%d_%s", uploadTempPrefix, time.Now().UnixNano(), rawName))
+
+	dst, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	if err != nil {
+		return "", fmt.Errorf("create temp file: %w", err)
+	}
+	// No-op after a successful commit; guarantees no partial file is left behind
+	// on any error or panic.
+	defer os.Remove(tmpPath)
+
+	_, copyErr := io.Copy(dst, src)
+	syncErr := dst.Sync()
+	closeErr := dst.Close()
+
+	if copyErr != nil {
+		return "", fmt.Errorf("write upload: %w", copyErr)
+	}
+	if syncErr != nil {
+		return "", fmt.Errorf("sync upload: %w", syncErr)
+	}
+	if closeErr != nil {
+		return "", fmt.Errorf("close upload: %w", closeErr)
+	}
+
+	return commitUpload(tmpPath, dir, rawName)
+}
+
+// saveUploadedFile writes one parsed multipart file to the target directory.
+func saveUploadedFile(fileHeader *multipart.FileHeader, dir string) (string, error) {
+	src, err := fileHeader.Open()
+	if err != nil {
+		return "", fmt.Errorf("open upload: %w", err)
+	}
+	defer src.Close()
+	return saveUploadStream(src, fileHeader.Filename, dir)
+}
+
+// uploadResult is the JSON body returned after a successful upload.
+func uploadResult(w http.ResponseWriter, uploaded []string) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"status":   "success",
+		"uploaded": uploaded,
+		"count":    len(uploaded),
+	})
+}
+
+// rollbackUploads removes files already committed by this request so a retry
+// cannot leave half an upload behind.
+func rollbackUploads(dir string, names []string) {
+	for _, name := range names {
+		if err := os.Remove(filepath.Join(dir, name)); err != nil && !os.IsNotExist(err) {
+			log.Printf("⚠️  upload rollback could not remove %q: %v", name, err)
+		}
+	}
+}
+
+var (
+	errUploadDirInvalid = errors.New("invalid destination folder")
+	errUploadDirTrash   = errors.New("trash is read-only for uploads")
+)
+
+// isInside reports whether candidate is dir itself or a descendant of it.
+func isInside(dir, candidate string) bool {
+	rel, err := filepath.Rel(dir, candidate)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))
+}
+
+// prepareUploadDir validates and creates the destination. Trash is read-only for
+// uploads: the SPA already refuses it, and this makes the API refuse it too.
+func prepareUploadDir(cfg *Config, targetFolder string) (string, error) {
+	absTargetDir, err := SafePathJail(cfg.RootDir, targetFolder)
+	if err != nil {
+		return "", errUploadDirInvalid
+	}
+	// Compare against the jail-resolved trash path so a symlinked root_dir
+	// cannot make the check miss.
+	if realTrash, err := SafePathJail(cfg.RootDir, ".pycloud_trash"); err == nil && isInside(realTrash, absTargetDir) {
+		return "", errUploadDirTrash
+	}
+	if err := os.MkdirAll(absTargetDir, 0755); err != nil {
+		return "", fmt.Errorf("create destination directory: %w", err)
+	}
+	return absTargetDir, nil
+}
+
+// writeUploadDirError turns a prepareUploadDir failure into the matching status
+// and message.
+func writeUploadDirError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, errUploadDirInvalid):
+		writeUploadError(w, http.StatusBadRequest, "Invalid destination folder")
+	case errors.Is(err, errUploadDirTrash):
+		writeUploadError(w, http.StatusBadRequest, "Trash is read-only for uploads. Choose another folder.")
+	default:
+		writeUploadError(w, http.StatusInternalServerError, "Could not create destination directory")
+	}
+}
+
+// handleStreamingUpload reads a multipart body part-by-part and writes each file
+// directly to its destination. This is used when the client supplies the target
+// folder in the query string (the SPA always does), so a 4GB upload does not
+// first fill /tmp with a second copy.
+func handleStreamingUpload(w http.ResponseWriter, r *http.Request, cfg *Config, targetFolder string, maxMB int64) {
+	absTargetDir, err := prepareUploadDir(cfg, targetFolder)
+	if err != nil {
+		writeUploadDirError(w, err)
+		return
+	}
+
+	reader, err := r.MultipartReader()
+	if err != nil {
+		writeUploadError(w, http.StatusBadRequest,
+			"The upload could not be read: the request was not valid multipart form data.")
+		return
+	}
+
+	uploadedFiles := make([]string, 0, 1)
+	for {
+		part, err := reader.NextPart()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			rollbackUploads(absTargetDir, uploadedFiles)
+			status, message := uploadErrorStatus(maxMB, err, "receiving")
+			writeUploadError(w, status, message)
+			return
+		}
+
+		// Only the "file" field carries uploads. The destination came from the
+		// query string, so the "path" form field and any other metadata are
+		// skipped.
+		if part.FormName() != "file" {
+			_ = part.Close()
+			continue
+		}
+
+		finalName, err := saveUploadStream(part, part.FileName(), absTargetDir)
+		_ = part.Close()
+		if err != nil {
+			rollbackUploads(absTargetDir, uploadedFiles)
+			status, message := uploadErrorStatus(maxMB, err, "saving")
+			writeUploadError(w, status, message)
+			return
+		}
+		uploadedFiles = append(uploadedFiles, finalName)
+	}
+
+	if len(uploadedFiles) == 0 {
+		writeUploadError(w, http.StatusBadRequest, "No files attached")
+		return
+	}
+	uploadResult(w, uploadedFiles)
+}
+
+// HandleUpload handles multipart file uploads. All files in one request are
+// committed together: if a later file fails, earlier ones are removed so a
+// retry cannot leave half an upload behind.
 func HandleUpload(cfg *Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -174,99 +500,71 @@ func HandleUpload(cfg *Config) http.HandlerFunc {
 			return
 		}
 
-		// Enforce maximum upload size limit
-		maxBytes := cfg.MaxUploadMB * 1024 * 1024
-		r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+		maxMB := cfg.MaxUploadMB
+		if maxMB <= 0 {
+			maxMB = DefaultMaxUploadMB
+		}
+		maxBytes := maxMB * 1024 * 1024
 
-		// Parse multipart form
-		err := r.ParseMultipartForm(32 << 20) // 32MB in RAM, rest to temp files
-		if err != nil {
-			http.Error(w, fmt.Sprintf(`{"error":"Upload exceeds maximum limit of %d MB"}`, cfg.MaxUploadMB), http.StatusRequestEntityTooLarge)
+		// Reject an oversized request before reading a single byte of it. This
+		// only catches clients that send Content-Length; MaxBytesReader below is
+		// the real enforcement for chunked bodies.
+		if r.ContentLength > maxBytes {
+			writeUploadError(w, http.StatusRequestEntityTooLarge,
+				fmt.Sprintf("Upload exceeds maximum limit of %d MB", maxMB))
 			return
 		}
+
+		r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+
+		// Prefer the destination from the query string: knowing it up front lets
+		// the body stream straight to the target directory. Clients that only
+		// send the multipart "path" field still work through the buffered path.
+		// If middleware already parsed the body (a CSRF token sent as a form
+		// field rather than a header), streaming is no longer possible.
+		if targetFolder := r.URL.Query().Get("path"); targetFolder != "" && r.MultipartForm == nil {
+			handleStreamingUpload(w, r, cfg, targetFolder, maxMB)
+			return
+		}
+
+		// Parse multipart form (32MB in RAM, the rest to temporary files).
+		if err := r.ParseMultipartForm(32 << 20); err != nil {
+			status, message := uploadErrorStatus(maxMB, err, "receiving")
+			writeUploadError(w, status, message)
+			return
+		}
+		defer r.MultipartForm.RemoveAll()
 
 		targetFolder := r.FormValue("path")
 		if targetFolder == "" {
 			targetFolder = "media/uploads"
 		}
 
-		absTargetDir, err := SafePathJail(cfg.RootDir, targetFolder)
+		absTargetDir, err := prepareUploadDir(cfg, targetFolder)
 		if err != nil {
-			http.Error(w, `{"error":"Invalid destination folder"}`, http.StatusBadRequest)
-			return
-		}
-
-		if err := os.MkdirAll(absTargetDir, 0755); err != nil {
-			http.Error(w, `{"error":"Could not create destination directory"}`, http.StatusInternalServerError)
+			writeUploadDirError(w, err)
 			return
 		}
 
 		formFiles := r.MultipartForm.File["file"]
 		if len(formFiles) == 0 {
-			http.Error(w, `{"error":"No files attached"}`, http.StatusBadRequest)
+			writeUploadError(w, http.StatusBadRequest, "No files attached")
 			return
 		}
 
-		var uploadedFiles []string
-
+		uploadedFiles := make([]string, 0, len(formFiles))
 		for _, fileHeader := range formFiles {
-			// Sanitize filename strictly
-			rawName := filepath.Base(fileHeader.Filename)
-			// Strip directory separators and null bytes
-			rawName = strings.ReplaceAll(rawName, "/", "_")
-			rawName = strings.ReplaceAll(rawName, "\\", "_")
-			rawName = strings.ReplaceAll(rawName, "\x00", "")
-			if rawName == "" || rawName == "." || rawName == ".." {
-				rawName = fmt.Sprintf("upload_%d", time.Now().UnixNano())
-			}
-
-			// Generate unique name to prevent accidental overwrite
-			finalName := GenerateUniqueName(absTargetDir, rawName)
-			finalPath := filepath.Join(absTargetDir, finalName)
-
-			// Atomic write via temporary file
-			tmpPath := filepath.Join(absTargetDir, fmt.Sprintf(".tmp_%d_%s", time.Now().UnixNano(), finalName))
-
-			src, err := fileHeader.Open()
+			finalName, err := saveUploadedFile(fileHeader, absTargetDir)
 			if err != nil {
-				http.Error(w, `{"error":"Failed to read uploaded file"}`, http.StatusInternalServerError)
+				rollbackUploads(absTargetDir, uploadedFiles)
+				status, message := uploadErrorStatus(maxMB, err, "saving")
+				writeUploadError(w, status, message)
 				return
 			}
-
-			dst, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
-			if err != nil {
-				src.Close()
-				http.Error(w, `{"error":"Failed to initialize file on disk"}`, http.StatusInternalServerError)
-				return
-			}
-
-			_, copyErr := io.Copy(dst, src)
-			_ = dst.Sync()
-			_ = dst.Close()
-			_ = src.Close()
-
-			if copyErr != nil {
-				_ = os.Remove(tmpPath)
-				http.Error(w, `{"error":"Failed during file transfer"}`, http.StatusInternalServerError)
-				return
-			}
-
-			// Atomically rename into place
-			if err := os.Rename(tmpPath, finalPath); err != nil {
-				_ = os.Remove(tmpPath)
-				http.Error(w, `{"error":"Failed to finalize file"}`, http.StatusInternalServerError)
-				return
-			}
-
 			uploadedFiles = append(uploadedFiles, finalName)
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"status":   "success",
-			"uploaded": uploadedFiles,
-			"count":    len(uploadedFiles),
-		})
+		uploadResult(w, uploadedFiles)
 	}
 }
 
